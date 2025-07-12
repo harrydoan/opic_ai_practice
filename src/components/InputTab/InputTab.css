@@ -1,0 +1,35 @@
+.input-tab-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.input-tab-container textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+  resize: vertical;
+}
+
+.button-group {
+  display: flex;
+  gap: 10px;
+}
+
+.preview-section {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.preview-section h4 {
+    margin-top: 0;
+}
+
+.preview-section ul {
+    padding-left: 20px;
+    margin-bottom: 0;
+}

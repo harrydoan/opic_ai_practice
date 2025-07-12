@@ -1,0 +1,54 @@
+.ordering-tab-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 20px;
+}
+
+.sentence-box {
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  font-style: italic;
+  font-size: 1.1rem;
+  width: 100%;
+}
+
+.ordering-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.ordering-btn {
+  padding: 15px;
+  border: 2px solid #ddd;
+  background-color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+.ordering-btn:hover:not(:disabled) {
+  border-color: var(--primary-color);
+}
+.ordering-btn.correct { background-color: #d4edda; border-color: var(--success-color); }
+.ordering-btn.incorrect { background-color: #f8d7da; border-color: var(--error-color); }
+.ordering-btn.disabled { opacity: 0.6; cursor: not-allowed; }
+
+
+.ordering-feedback {
+    margin-top: 15px;
+    width: 100%;
+}
+.ordering-feedback .next-btn {
+    margin-top: 10px;
+    padding: 10px 20px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
