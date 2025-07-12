@@ -4,7 +4,11 @@ import { callOpenRouterAPI } from '../../api/openRouterAPI';
 import Button from '../common/Button';
 import './InputTab.css';
 
-const OPIC_PROMPT = `bạn là chuyên gia, thầy giáo về luyện thi OPIC chứng chỉ quốc tế. Hôm nay hãy gửi cho tôi 1 câu hỏi ngẫu nhiên trong bộ câu hỏi luyện thi OPIC và câu trả lời mẫu ở trình độ AL cho câu hỏi đó. Kết quả trả về chỉ là câu hỏi và câu trả lời mẫu không có chữ gì khác để tôi luyện tập`;
+// Thay thế dòng này:
+// const OPIC_PROMPT = `bạn là chuyên gia, thầy giáo về luyện thi OPIC...`;
+
+// Bằng dòng này:
+const OPIC_PROMPT = `You are an expert OPIC test instructor. Provide one random question from the OPIC test set and a sample answer for the AL (Advanced Low) level. The result must contain ONLY the question and the sample answer, with no other text, labels, or formatting like "Question:" or "Answer:".`;
 
 const InputTab = () => {
   const [inputText, setInputText] = useState('');

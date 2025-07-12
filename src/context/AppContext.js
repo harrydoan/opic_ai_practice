@@ -9,6 +9,7 @@ export const AppProvider = ({ children }) => {
   
   const { 
     fillInTheBlankQuestions, 
+    setFillInTheBlankQuestions, // <-- THÊM DÒNG NÀY
     orderingQuestions, 
     generateQuestions 
   } = useQuestionGenerator();
@@ -34,6 +35,7 @@ export const AppProvider = ({ children }) => {
     setActiveTab,
     sentences,
     fillInTheBlankQuestions,
+    setFillInTheBlankQuestions, // <-- THÊM DÒNG NÀY
     orderingQuestions,
     processAndStoreText,
   };

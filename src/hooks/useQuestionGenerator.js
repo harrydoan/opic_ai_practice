@@ -1,5 +1,24 @@
 import { useState } from 'react';
-import { grammarRules } from '../data/grammarRules';
+
+// --- CẢI TIẾN 1: Ngân hàng từ gây nhiễu (distractors) được phân loại ---
+const distractors = {
+  prepositions: ['on', 'at', 'with', 'from', 'for', 'about', 'over', 'under', 'by'],
+  articles: ['a', 'an', 'the'],
+  conjunctions: ['and', 'but', 'or', 'so', 'because', 'while', 'if', 'although'],
+  verbsToBe: ['is', 'are', 'was', 'were', 'be', 'being', 'been'],
+  modalVerbs: ['can', 'could', 'will', 'would', 'may', 'might', 'should', 'must'],
+  pronouns: ['he', 'she', 'it', 'they', 'we', 'you', 'I', 'me', 'him', 'her'],
+};
+
+// Hàm tìm loại từ để chọn đúng nhóm từ gây nhiễu
+const getWordType = (word) => {
+  for (const type in distractors) {
+    if (distractors[type].includes(word.toLowerCase())) {
+      return type;
+    }
+  }
+  return null;
+};
 
 // Hàm shuffle mảng
 const shuffleArray = (array) => {
@@ -11,33 +30,45 @@ const useQuestionGenerator = () => {
   const [orderingQuestions, setOrderingQuestions] = useState([]);
 
   const generateQuestions = (sentences) => {
-    // --- Tạo câu hỏi điền vào chỗ trống ---
     const fillQuestions = [];
-    const commonWords = ['is', 'are', 'was', 'were', 'have', 'has', 'do', 'does', 'did', 'for', 'since', 'with', 'from', 'to', 'at'];
-
     sentences.forEach((sentence, sentenceIndex) => {
-      const words = sentence.split(' ').filter(w => w.length >= 3 && !/[.,]/.test(w));
-      const wordsToBlank = shuffleArray(words).slice(0, 2); // Tạo tối đa 2 câu hỏi mỗi câu
+      const words = sentence.split(' ').filter(w => w.length >= 2 && !/[.,]/.test(w));
+      const wordsToBlank = shuffleArray(words).slice(0, 2);
 
       wordsToBlank.forEach((word, questionIndex) => {
         const correctAnswer = word.toLowerCase();
         const questionText = sentence.replace(new RegExp(`\\b${word}\\b`), "<span class='blank'>_____</span>");
 
-        // Tạo đáp án sai
+        // --- CẢI TIẾN 2: Logic tạo đáp án sai thông minh hơn ---
         let wrongOptions = [];
-        // 1. Biến thể
-        if (correctAnswer.endsWith('s')) wrongOptions.push(correctAnswer.slice(0, -1));
-        else wrongOptions.push(correctAnswer + 's');
-        if (correctAnswer.endsWith('ed')) wrongOptions.push(correctAnswer.slice(0, -2));
-        else wrongOptions.push(correctAnswer + 'ed');
-        
-        // 2. Lấy từ phổ biến
-        wrongOptions.push(...shuffleArray(commonWords));
-        
-        // Lọc trùng lặp và đảm bảo không trùng đáp án đúng
-        wrongOptions = [...new Set(wrongOptions)].filter(opt => opt !== correctAnswer);
-        
-        // Lấy 3 đáp án sai
+        const wordType = getWordType(correctAnswer);
+
+        if (wordType) {
+          // Nếu từ thuộc loại đã định nghĩa (giới từ, mạo từ...), lấy từ cùng loại
+          wrongOptions = shuffleArray(distractors[wordType]).filter(opt => opt !== correctAnswer);
+        } else {
+          // Nếu là từ thông thường, tạo biến thể
+          if (correctAnswer.endsWith('s')) wrongOptions.push(correctAnswer.slice(0, -1));
+          else wrongOptions.push(correctAnswer + 's');
+
+          if (correctAnswer.endsWith('ed')) wrongOptions.push(correctAnswer.slice(0, -2));
+          else wrongOptions.push(correctAnswer + 'ed');
+
+          if (correctAnswer.endsWith('ing')) wrongOptions.push(correctAnswer.slice(0, -3));
+          else wrongOptions.push(correctAnswer + 'ing');
+        }
+
+        // Lọc trùng lặp và đảm bảo đủ 3 đáp án sai
+        wrongOptions = [...new Set(wrongOptions)];
+        while (wrongOptions.length < 3) {
+            // Thêm từ ngẫu nhiên nếu không đủ
+            const randomType = Object.keys(distractors)[Math.floor(Math.random() * Object.keys(distractors).length)];
+            const randomWord = distractors[randomType][Math.floor(Math.random() * distractors[randomType].length)];
+            if(randomWord !== correctAnswer && !wrongOptions.includes(randomWord)) {
+                wrongOptions.push(randomWord);
+            }
+        }
+
         const finalOptions = shuffleArray([correctAnswer, ...wrongOptions.slice(0, 3)]);
 
         fillQuestions.push({
@@ -46,15 +77,16 @@ const useQuestionGenerator = () => {
           question: questionText,
           correctAnswer: correctAnswer,
           options: finalOptions,
-          explanation: `Từ đúng là "${word}" trong câu này.`,
-          grammar: grammarRules[correctAnswer] || 'Quy tắc ngữ pháp chung.',
-          translation: 'Bản dịch sẽ được cập nhật sau.' // Có thể tích hợp API dịch
+          // Xóa phần giải thích và dịch, vì sẽ lấy từ AI
+          explanation: '',
+          grammar: '',
+          translation: ''
         });
       });
     });
     setFillInTheBlankQuestions(shuffleArray(fillQuestions));
 
-    // --- Tạo câu hỏi sắp xếp ---
+    // Logic tạo câu hỏi sắp xếp (giữ nguyên)
     const orderQuestions = sentences.map((sentence, index) => {
       const correctPosition = index + 1;
       let wrongPositions = [];
@@ -70,13 +102,13 @@ const useQuestionGenerator = () => {
         sentence: sentence,
         correctPosition: correctPosition,
         options: options,
-        explanation: `Câu này đứng ở vị trí thứ ${correctPosition} trong đoạn văn gốc.`
+        explanation: `This sentence is at position ${correctPosition} in the original paragraph.`
       };
     });
     setOrderingQuestions(shuffleArray(orderQuestions));
   };
 
-  return { fillInTheBlankQuestions, orderingQuestions, generateQuestions };
+  return { fillInTheBlankQuestions, setFillInTheBlankQuestions, orderingQuestions, generateQuestions };
 };
 
 export default useQuestionGenerator;
