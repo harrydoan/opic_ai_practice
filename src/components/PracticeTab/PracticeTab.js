@@ -30,14 +30,17 @@ const PracticeTab = () => {
     setSelectedAnswer(null);
   }, []);
   
+  // Sửa lỗi ở đây:
   useEffect(() => {
+    // Effect này chỉ nên chạy khi bộ câu hỏi thay đổi (tức là khi chúng được tải lần đầu).
+    // Chúng ta sử dụng `length` làm dependency để ngăn nó chạy lại khi chỉ cập nhật feedback trong một câu hỏi.
     if (fillInTheBlankQuestions.length > 0) {
       const initialIndices = Array.from(Array(fillInTheBlankQuestions.length).keys());
       startNewRound(initialIndices);
       setStats({ correct: 0, incorrect: 0 });
       setWrongAnswerIndices([]);
     }
-  }, [fillInTheBlankQuestions, startNewRound]);
+  }, [fillInTheBlankQuestions.length, startNewRound]);
 
   const currentQuestionIndex = questionOrder[currentQuestionPointer];
   const currentQuestion = fillInTheBlankQuestions[currentQuestionIndex];
@@ -60,12 +63,15 @@ const PracticeTab = () => {
 
     setFillInTheBlankQuestions(prevQuestions => {
       const newQuestions = [...prevQuestions];
-      newQuestions[index] = {
-        ...newQuestions[index],
-        grammar: feedbackData.grammar,
-        translation: feedbackData.translation,
-        explanation: `The correct word is "${newQuestions[index].correctAnswer}".`
-      };
+      // Đảm bảo không ghi đè lên một câu hỏi không tồn tại
+      if (newQuestions[index]) {
+          newQuestions[index] = {
+            ...newQuestions[index],
+            grammar: feedbackData.grammar,
+            translation: feedbackData.translation,
+            explanation: `The correct word is "${newQuestions[index].correctAnswer}".`
+          };
+      }
       return newQuestions;
     });
     
@@ -135,7 +141,6 @@ const PracticeTab = () => {
             isLoading={isFeedbackLoading}
           />
           
-          {/* Nút "Next" chỉ hiển thị khi không còn tải dữ liệu */}
           {!isFeedbackLoading && (
             <Button onClick={handleNextQuestion}>
               Next Question →
