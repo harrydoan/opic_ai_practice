@@ -6,13 +6,12 @@ import Feedback from './Feedback';
 import Button from '../common/Button';
 import './PracticeTab.css';
 
-// Prompt để tạo câu hỏi hoàn chỉnh từ một câu văn
 const createQuestionPrompt = (sentence) => {
   return `Given the English sentence: "${sentence}".
 Your task is to create a challenging fill-in-the-blank question for an English learner.
 1. Analyze the sentence and choose a single, meaningful word to be the blanked-out answer. The word must be at least 3 characters long.
 2. Create three incorrect but plausible distractor words. They should be the same grammatical type as the correct answer.
-3. Provide a concise grammar explanation **in Vietnamese** for why the correct word is the right choice in this context.
+3. Provide a concise grammar explanation in Vietnamese for why the correct word is the right choice in this context.
 4. Provide the full Vietnamese translation of the sentence.
 
 Return the result ONLY as a single, raw JSON object with the following structure. Do not include any extra text or markdown formatting.
@@ -20,7 +19,7 @@ Return the result ONLY as a single, raw JSON object with the following structure
   "question_sentence": "The sentence with '_____' in place of the correct word.",
   "options": ["correct_word", "distractor1", "distractor2", "distractor3"],
   "correct_answer": "the_correct_word_in_lowercase",
-  "grammar_explanation": "Your **Vietnamese grammar explanation** here.",
+  "grammar_explanation": "Your Vietnamese grammar explanation here.",
   "translation": "Your Vietnamese translation here."
 }`;
 };
@@ -29,7 +28,7 @@ const PracticeTab = () => {
   const { sentences, selectedModel } = useContext(AppContext);
   
   const [currentQuestion, setCurrentQuestion] = useState(null);
-  const [isLoading, setIsLoading] = useState(true); // Bắt đầu với trạng thái loading
+  const [isLoading, setIsLoading] = useState(true);
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
 
@@ -39,36 +38,53 @@ const PracticeTab = () => {
     setIsLoading(true);
     setIsAnswered(false);
     setSelectedAnswer(null);
-    setCurrentQuestion(null); // Xóa câu hỏi cũ để hiển thị loading
+    setCurrentQuestion(null);
 
     try {
-      // 1. Chọn ngẫu nhiên một câu văn gốc
       const randomIndex = Math.floor(Math.random() * sentences.length);
       const sentenceToProcess = sentences[randomIndex];
-
-      // 2. Gửi câu văn đó đến AI để tạo câu hỏi hoàn chỉnh
       const prompt = createQuestionPrompt(sentenceToProcess);
       const result = await callOpenRouterAPI(prompt, selectedModel);
       
-      // 3. Parse JSON và cập nhật state
       const jsonString = result.match(/{[\s\S]*}/);
       if (jsonString) {
-        const questionData = JSON.parse(jsonString[0]);
-        // Xáo trộn đáp án
+        let questionData = JSON.parse(jsonString[0]);
+
+        // =================================================================
+        // == BƯỚC KIỂM TRA VÀ TỰ SỬA LỖI (SELF-CORRECTION LOGIC) ==
+        // =================================================================
+        // Đảm bảo các giá trị cần thiết tồn tại
+        if (!questionData.options || !questionData.correct_answer) {
+          throw new Error("AI response is missing 'options' or 'correct_answer'.");
+        }
+
+        const correctAnswerLower = questionData.correct_answer.toLowerCase();
+        const optionsLower = questionData.options.map(opt => opt.toLowerCase());
+
+        // Kiểm tra xem câu trả lời đúng có trong các lựa chọn không
+        if (!optionsLower.includes(correctAnswerLower)) {
+          console.warn("AI Error: Correct answer was not in options. Forcing it in.");
+          // Thay thế lựa chọn đầu tiên bằng câu trả lời đúng để đảm bảo nó tồn tại
+          questionData.options[0] = questionData.correct_answer;
+        }
+        
+        // Luôn xáo trộn các đáp án sau khi đã đảm bảo câu trả lời đúng có trong đó
         questionData.options = questionData.options.sort(() => Math.random() - 0.5);
+        // =================================================================
+        
         setCurrentQuestion(questionData);
       } else {
         throw new Error("Failed to parse JSON from AI response.");
       }
     } catch (error) {
       console.error("Failed to generate next question:", error);
-      // Có thể thêm state để hiển thị lỗi cho người dùng
+      // Nếu có lỗi, thử lại với câu hỏi khác
+      pickAndProcessNextQuestion();
     } finally {
       setIsLoading(false);
     }
   }, [sentences, selectedModel]);
 
-  // Tải câu hỏi đầu tiên khi component được mở
   useEffect(() => {
     pickAndProcessNextQuestion();
   }, [pickAndProcessNextQuestion]);
@@ -79,12 +95,10 @@ const PracticeTab = () => {
     setSelectedAnswer(answer);
   };
   
-  // Khi nhấn "Next", chỉ cần gọi lại hàm xử lý
   const handleNextQuestion = () => {
     pickAndProcessNextQuestion();
   };
   
-  // Giao diện Loading toàn màn hình
   if (isLoading) {
     return (
         <div className="processing-container">
@@ -95,7 +109,12 @@ const PracticeTab = () => {
   }
 
   if (!currentQuestion) {
-    return <p>Could not load a question. Please try again.</p>;
+    return (
+      <div className="processing-container">
+        <p>Could not load a question.</p>
+        <Button onClick={handleNextQuestion}>Try Again</Button>
+      </div>
+    );
   }
   
   return (
@@ -116,7 +135,7 @@ const PracticeTab = () => {
           <Feedback 
             isCorrect={selectedAnswer.toLowerCase() === currentQuestion.correct_answer.toLowerCase()}
             question={{
-                explanation: `The correct word is "${currentQuestion.correct_answer}".`,
+                explanation: `Đáp án đúng là "${currentQuestion.correct_answer}".`,
                 grammar: currentQuestion.grammar_explanation,
                 translation: currentQuestion.translation,
             }}
