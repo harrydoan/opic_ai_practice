@@ -11,16 +11,19 @@ const shuffleArray = (array) => {
 const OrderingTab = () => {
     const { sentences } = useContext(AppContext);
     
-    const [currentIndex, setCurrentIndex] = useState(0);
+    // State mới để quản lý thứ tự câu hỏi đã xáo trộn
+    const [shuffledIndices, setShuffledIndices] = useState([]);
+    const [pointer, setPointer] = useState(0); // Con trỏ đến vị trí hiện tại trong mảng đã xáo trộn
+
     const [options, setOptions] = useState([]);
     const [isAnswered, setIsAnswered] = useState(false);
     const [selectedAnswer, setSelectedAnswer] = useState(null);
 
     // Hàm tạo các lựa chọn cho câu hỏi hiện tại
-    const generateOptions = useCallback(() => {
+    const generateOptions = useCallback((correctIndex) => {
         if (sentences.length === 0) return;
 
-        const correctPosition = currentIndex + 1;
+        const correctPosition = correctIndex + 1;
         let wrongPositions = [];
 
         // Tạo 3 vị trí sai ngẫu nhiên
@@ -33,12 +36,25 @@ const OrderingTab = () => {
         
         const shuffledOptions = shuffleArray([correctPosition, ...wrongPositions]);
         setOptions(shuffledOptions);
-    }, [currentIndex, sentences.length]);
+    }, [sentences.length]);
 
-    // Tải câu hỏi đầu tiên hoặc khi chuyển câu
+    // Khởi tạo hoặc khi có bộ câu mới
     useEffect(() => {
-        generateOptions();
-    }, [currentIndex, generateOptions]);
+        if (sentences.length > 0) {
+            // Tạo một mảng các chỉ số (0, 1, 2,...) và xáo trộn nó
+            const indices = Array.from(Array(sentences.length).keys());
+            setShuffledIndices(shuffleArray(indices));
+            setPointer(0);
+        }
+    }, [sentences]);
+
+    // Tải câu hỏi và tạo đáp án khi con trỏ thay đổi
+    useEffect(() => {
+        if (shuffledIndices.length > 0) {
+            const originalIndex = shuffledIndices[pointer];
+            generateOptions(originalIndex);
+        }
+    }, [pointer, shuffledIndices, generateOptions]);
 
     const handleAnswerSelect = (position) => {
         if (isAnswered) return;
@@ -47,8 +63,17 @@ const OrderingTab = () => {
     };
 
     const handleNextQuestion = () => {
-        const nextIndex = (currentIndex + 1) % sentences.length; // Quay vòng khi hết
-        setCurrentIndex(nextIndex);
+        const nextPointer = pointer + 1;
+        // Nếu đã duyệt hết danh sách đã xáo trộn
+        if (nextPointer >= shuffledIndices.length) {
+            // Tạo một danh sách xáo trộn mới và bắt đầu lại từ đầu
+            const indices = Array.from(Array(sentences.length).keys());
+            setShuffledIndices(shuffleArray(indices));
+            setPointer(0);
+        } else {
+            // Nếu chưa, đi đến câu tiếp theo trong danh sách xáo trộn
+            setPointer(nextPointer);
+        }
         setIsAnswered(false);
         setSelectedAnswer(null);
     };
@@ -56,9 +81,14 @@ const OrderingTab = () => {
     if (sentences.length === 0) {
         return <p>Không có dữ liệu câu. Vui lòng xử lý văn bản ở tab "Nhập liệu" trước.</p>;
     }
-
-    const currentSentence = sentences[currentIndex];
-    const correctPosition = currentIndex + 1;
+    
+    // Lấy thông tin câu hỏi hiện tại dựa trên con trỏ và mảng đã xáo trộn
+    const originalIndex = shuffledIndices[pointer];
+    if (originalIndex === undefined) {
+        return <p>Đang tải câu hỏi...</p>;
+    }
+    const currentSentence = sentences[originalIndex];
+    const correctPosition = originalIndex + 1;
 
     return (
         <div className="ordering-tab-container">
