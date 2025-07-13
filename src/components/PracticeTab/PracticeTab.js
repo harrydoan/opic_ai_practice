@@ -22,7 +22,6 @@ const PracticeTab = () => {
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [isFeedbackLoading, setIsFeedbackLoading] = useState(false);
 
-  // Hàm khởi tạo hoặc reset vòng chơi
   const startNewRound = useCallback((indices) => {
     setQuestionOrder(indices);
     setCurrentQuestionPointer(0);
@@ -31,7 +30,6 @@ const PracticeTab = () => {
     setSelectedAnswer(null);
   }, []);
   
-  // Khởi tạo lần đầu khi câu hỏi được nạp
   useEffect(() => {
     if (fillInTheBlankQuestions.length > 0) {
       const initialIndices = Array.from(Array(fillInTheBlankQuestions.length).keys());
@@ -60,7 +58,6 @@ const PracticeTab = () => {
       };
     }
 
-    // FIX: Dùng functional update để tránh state cũ (stale state)
     setFillInTheBlankQuestions(prevQuestions => {
       const newQuestions = [...prevQuestions];
       newQuestions[index] = {
@@ -85,11 +82,9 @@ const PracticeTab = () => {
       setStats(prev => ({ ...prev, correct: prev.correct + 1 }));
     } else {
       setStats(prev => ({ ...prev, incorrect: prev.incorrect + 1 }));
-      // Thêm chỉ số của câu sai vào danh sách, không trùng lặp
       setWrongAnswerIndices(prev => [...new Set([...prev, currentQuestionIndex])]);
     }
 
-    // Chỉ gọi AI để lấy feedback nếu câu hỏi đó chưa có feedback
     if (!currentQuestion.grammar && !currentQuestion.translation) {
       fetchFeedbackFromAI(currentQuestion, currentQuestionIndex);
     }
@@ -99,21 +94,16 @@ const PracticeTab = () => {
     const nextPointer = currentQuestionPointer + 1;
     setAnsweredInRound(prev => prev + 1);
 
-    // NEW LOGIC: Logic chuyển câu hỏi mới
     if (nextPointer < questionOrder.length) {
-      // Nếu chưa hết vòng, đi đến câu tiếp theo
       setCurrentQuestionPointer(nextPointer);
       setIsAnswered(false);
       setSelectedAnswer(null);
     } else {
-      // Nếu đã hết vòng
       if (wrongAnswerIndices.length > 0) {
-        // Bắt đầu vòng ôn tập với những câu sai
         alert(`Round complete! Now starting a review round with ${wrongAnswerIndices.length} incorrect answers.`);
         startNewRound(wrongAnswerIndices);
-        setWrongAnswerIndices([]); // Xóa danh sách câu sai để chuẩn bị cho vòng sau
+        setWrongAnswerIndices([]);
       } else {
-        // Nếu không có câu sai, chơi lại từ đầu
         alert("Excellent! You answered all questions correctly. Let's start over!");
         const allIndices = Array.from(Array(fillInTheBlankQuestions.length).keys());
         startNewRound(allIndices);
@@ -144,9 +134,13 @@ const PracticeTab = () => {
             question={currentQuestion}
             isLoading={isFeedbackLoading}
           />
-          <Button onClick={handleNextQuestion} disabled={isFeedbackLoading}>
-            {isFeedbackLoading ? <div className="spinner"></div> : 'Next Question →'}
-          </Button>
+          
+          {/* Nút "Next" chỉ hiển thị khi không còn tải dữ liệu */}
+          {!isFeedbackLoading && (
+            <Button onClick={handleNextQuestion}>
+              Next Question →
+            </Button>
+          )}
         </div>
       )}
     </div>
