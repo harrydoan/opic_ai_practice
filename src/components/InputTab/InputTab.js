@@ -5,31 +5,25 @@ import Button from '../common/Button';
 import './InputTab.css';
 
 const InputTab = () => {
-  const [inputText, setInputText] = useState('');
+  // const [inputText, setInputText] = useState(''); // <-- XÓA DÒNG NÀY
   const [isLoading, setIsLoading] = useState(false);
-  const { setSentences, selectedModel, setSelectedModel, setActiveTab } = useContext(AppContext);
+  const { 
+    setSentences, 
+    selectedModel, setSelectedModel, 
+    setActiveTab,
+    opicText, setOpicText // <-- LẤY STATE TỪ CONTEXT
+  } = useContext(AppContext);
 
   const handleFetchData = async () => {
     setIsLoading(true);
-    
-    // PROMPT MỚI NGHIÊM NGẶT HƠN
-    const OPIC_PROMPT = `Act as an OPIC test expert. Your task is to provide one random question and a corresponding sample answer for the AL (Advanced Low) level.
-
-**Crucial Instruction:** The output must ONLY contain the text of the question followed by the text of the answer. Do not include any labels like "Question:", "Answer:", headers, introductory sentences, or markdown formatting.
-
-**Example of correct output format:**
-"Can you describe a memorable trip you've taken?
-Of course. One of the most memorable trips I've ever taken was to Da Nang last summer. The beaches were absolutely pristine, and the local cuisine was a delightful experience. I particularly enjoyed visiting the Marble Mountains and seeing the city from above. It was a perfect blend of relaxation and adventure."
-
-Now, generate a new, random question and answer following this format exactly.`;
-
+    const OPIC_PROMPT = `Act as an OPIC test expert...`; // Giữ nguyên prompt
     const result = await callOpenRouterAPI(OPIC_PROMPT, selectedModel);
-    setInputText(result);
+    setOpicText(result); // <-- SỬ DỤNG HÀM SET TỪ CONTEXT
     setIsLoading(false);
   };
 
   const handleProcessText = () => {
-    const extractedSentences = inputText
+    const extractedSentences = opicText // <-- SỬ DỤNG STATE TỪ CONTEXT
       .split(/[.!?]+/)
       .map(s => s.trim())
       .filter(s => s.length > 10 && s.split(' ').length >= 5);
@@ -56,13 +50,14 @@ Now, generate a new, random question and answer following this format exactly.`;
         </select>
       </div>
 
-      <textarea value={inputText} onChange={(e) => setInputText(e.target.value)} rows="8" placeholder="Dán đoạn văn vào đây..."></textarea>
+      {/* SỬ DỤNG STATE TỪ CONTEXT */}
+      <textarea value={opicText} onChange={(e) => setOpicText(e.target.value)} rows="8" placeholder="Dán đoạn văn vào đây hoặc lấy dữ liệu tự động..."></textarea>
       
       <div className="button-group">
         <Button onClick={handleFetchData} disabled={isLoading}>
           {isLoading ? <div className="spinner"></div> : '🤖 Lấy dữ liệu OPIC'}
         </Button>
-        <Button onClick={handleProcessText} disabled={!inputText}>
+        <Button onClick={handleProcessText} disabled={!opicText}>
           📝 Bắt đầu Luyện tập
         </Button>
       </div>
