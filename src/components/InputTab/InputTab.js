@@ -4,26 +4,62 @@ import { callOpenRouterAPI } from '../../api/openRouterAPI';
 import Button from '../common/Button';
 import './InputTab.css';
 
+// HÀM MỚI: Dọn dẹp văn bản trả về từ AI
+const cleanOpicResponse = (rawText) => {
+  if (!rawText) return '';
+
+  // Danh sách các tiền tố thừa cần loại bỏ (cả tiếng Anh và tiếng Việt)
+  const prefixesToRemove = [
+    'Question:',
+    'Sample Answer:',
+    'Answer:',
+    'Câu hỏi:',
+    'Câu trả lời mẫu:',
+    'Câu trả lời:'
+  ];
+
+  // Tách văn bản thành từng dòng, dọn dẹp từng dòng, rồi nối lại
+  const cleanedLines = rawText.split('\n').map(line => {
+    let cleanedLine = line.trim();
+    for (const prefix of prefixesToRemove) {
+      if (cleanedLine.toLowerCase().startsWith(prefix.toLowerCase())) {
+        // Xóa tiền tố và các khoảng trắng thừa
+        cleanedLine = cleanedLine.substring(prefix.length).trim();
+        break; // Chuyển sang dòng tiếp theo khi đã tìm thấy và xóa
+      }
+    }
+    return cleanedLine;
+  });
+
+  // Nối các dòng đã dọn dẹp và xóa khoảng trắng thừa ở đầu/cuối
+  return cleanedLines.join('\n').trim();
+};
+
+
 const InputTab = () => {
-  // const [inputText, setInputText] = useState(''); // <-- XÓA DÒNG NÀY
   const [isLoading, setIsLoading] = useState(false);
   const { 
     setSentences, 
     selectedModel, setSelectedModel, 
     setActiveTab,
-    opicText, setOpicText // <-- LẤY STATE TỪ CONTEXT
+    opicText, setOpicText
   } = useContext(AppContext);
 
   const handleFetchData = async () => {
     setIsLoading(true);
-    const OPIC_PROMPT = `Act as an OPIC test expert...`; // Giữ nguyên prompt
+    const OPIC_PROMPT = `Act as an OPIC test expert. Your task is to provide one random question and a corresponding sample answer for the AL (Advanced Low) level. The output should only contain the question and the answer text, without any labels like "Question:" or "Answer:".`;
+
     const result = await callOpenRouterAPI(OPIC_PROMPT, selectedModel);
-    setOpicText(result); // <-- SỬ DỤNG HÀM SET TỪ CONTEXT
+    
+    // SỬ DỤNG HÀM DỌN DẸP TRƯỚC KHI LƯU VÀO STATE
+    const cleanedText = cleanOpicResponse(result);
+    setOpicText(cleanedText);
+    
     setIsLoading(false);
   };
 
   const handleProcessText = () => {
-    const extractedSentences = opicText // <-- SỬ DỤNG STATE TỪ CONTEXT
+    const extractedSentences = opicText
       .split(/[.!?]+/)
       .map(s => s.trim())
       .filter(s => s.length > 10 && s.split(' ').length >= 5);
@@ -50,7 +86,6 @@ const InputTab = () => {
         </select>
       </div>
 
-      {/* SỬ DỤNG STATE TỪ CONTEXT */}
       <textarea value={opicText} onChange={(e) => setOpicText(e.target.value)} rows="8" placeholder="Dán đoạn văn vào đây hoặc lấy dữ liệu tự động..."></textarea>
       
       <div className="button-group">
