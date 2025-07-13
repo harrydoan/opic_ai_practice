@@ -4,8 +4,6 @@ import { callOpenRouterAPI } from '../../api/openRouterAPI';
 import Button from '../common/Button';
 import './InputTab.css';
 
-// ... (phần models và createQuestionPrompt giữ nguyên hoặc xóa đi vì không dùng ở đây nữa)
-
 const InputTab = () => {
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -13,7 +11,18 @@ const InputTab = () => {
 
   const handleFetchData = async () => {
     setIsLoading(true);
-    const OPIC_PROMPT = `You are an expert OPIC test instructor...`; // Giữ nguyên prompt này
+    
+    // PROMPT MỚI NGHIÊM NGẶT HƠN
+    const OPIC_PROMPT = `Act as an OPIC test expert. Your task is to provide one random question and a corresponding sample answer for the AL (Advanced Low) level.
+
+**Crucial Instruction:** The output must ONLY contain the text of the question followed by the text of the answer. Do not include any labels like "Question:", "Answer:", headers, introductory sentences, or markdown formatting.
+
+**Example of correct output format:**
+"Can you describe a memorable trip you've taken?
+Of course. One of the most memorable trips I've ever taken was to Da Nang last summer. The beaches were absolutely pristine, and the local cuisine was a delightful experience. I particularly enjoyed visiting the Marble Mountains and seeing the city from above. It was a perfect blend of relaxation and adventure."
+
+Now, generate a new, random question and answer following this format exactly.`;
+
     const result = await callOpenRouterAPI(OPIC_PROMPT, selectedModel);
     setInputText(result);
     setIsLoading(false);

@@ -12,7 +12,7 @@ const createQuestionPrompt = (sentence) => {
 Your task is to create a challenging fill-in-the-blank question for an English learner.
 1. Analyze the sentence and choose a single, meaningful word to be the blanked-out answer. The word must be at least 3 characters long.
 2. Create three incorrect but plausible distractor words. They should be the same grammatical type as the correct answer.
-3. Provide a concise grammar explanation for why the correct word is the right choice in this context.
+3. Provide a concise grammar explanation **in Vietnamese** for why the correct word is the right choice in this context.
 4. Provide the full Vietnamese translation of the sentence.
 
 Return the result ONLY as a single, raw JSON object with the following structure. Do not include any extra text or markdown formatting.
@@ -20,7 +20,7 @@ Return the result ONLY as a single, raw JSON object with the following structure
   "question_sentence": "The sentence with '_____' in place of the correct word.",
   "options": ["correct_word", "distractor1", "distractor2", "distractor3"],
   "correct_answer": "the_correct_word_in_lowercase",
-  "grammar_explanation": "Your grammar explanation here.",
+  "grammar_explanation": "Your **Vietnamese grammar explanation** here.",
   "translation": "Your Vietnamese translation here."
 }`;
 };
