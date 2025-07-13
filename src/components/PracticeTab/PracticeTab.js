@@ -1,6 +1,6 @@
-import React, { useState, useContext, useEffect, useMemo } from 'react';
+import React, { useState, useContext, useEffect, useCallback } from 'react';
 import { AppContext } from '../../context/AppContext';
-import { callOpenRouterAPI } from '../../api/openRouterAPI'; // Import API call
+import { callOpenRouterAPI } from '../../api/openRouterAPI';
 import Stats from './Stats';
 import Question from './Question';
 import Feedback from './Feedback';
@@ -9,64 +9,70 @@ import Button from '../common/Button';
 import './PracticeTab.css';
 
 const PracticeTab = () => {
-  const { fillInTheBlankQuestions, setFillInTheBlankQuestions } = useContext(AppContext);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [stats, setStats] = useState({ answered: 0, correct: 0, incorrect: 0 });
-  const [wrongAnswerQueue, setWrongAnswerQueue] = useState([]);
+  const { fillInTheBlankQuestions, setFillInTheBlankQuestions, selectedModel } = useContext(AppContext);
+  
+  const [questionOrder, setQuestionOrder] = useState([]);
+  const [currentQuestionPointer, setCurrentQuestionPointer] = useState(0);
+  const [answeredInRound, setAnsweredInRound] = useState(0);
+
+  const [stats, setStats] = useState({ correct: 0, incorrect: 0 });
+  const [wrongAnswerIndices, setWrongAnswerIndices] = useState([]);
+
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
-  const [isFeedbackLoading, setIsFeedbackLoading] = useState(false); // <-- State mới cho loading feedback
+  const [isFeedbackLoading, setIsFeedbackLoading] = useState(false);
 
-  const questionOrder = useMemo(() => {
-    return Array.from(Array(fillInTheBlankQuestions.length).keys());
-  }, [fillInTheBlankQuestions]);
-
-  const [unansweredQuestions, setUnansweredQuestions] = useState(questionOrder);
-
-  const currentQuestion = fillInTheBlankQuestions[currentQuestionIndex];
-
-  useEffect(() => {
-    setStats({ answered: 0, correct: 0, incorrect: 0 });
-    setWrongAnswerQueue([]);
+  // Hàm khởi tạo hoặc reset vòng chơi
+  const startNewRound = useCallback((indices) => {
+    setQuestionOrder(indices);
+    setCurrentQuestionPointer(0);
+    setAnsweredInRound(0);
     setIsAnswered(false);
     setSelectedAnswer(null);
-    setUnansweredQuestions(questionOrder);
-    setCurrentQuestionIndex(questionOrder[0] || 0);
-  }, [fillInTheBlankQuestions, questionOrder]);
+  }, []);
+  
+  // Khởi tạo lần đầu khi câu hỏi được nạp
+  useEffect(() => {
+    if (fillInTheBlankQuestions.length > 0) {
+      const initialIndices = Array.from(Array(fillInTheBlankQuestions.length).keys());
+      startNewRound(initialIndices);
+      setStats({ correct: 0, incorrect: 0 });
+      setWrongAnswerIndices([]);
+    }
+  }, [fillInTheBlankQuestions, startNewRound]);
 
-  // --- LOGIC MỚI: Lấy giải thích và dịch từ AI ---
-  const fetchFeedbackFromAI = async (question) => {
+  const currentQuestionIndex = questionOrder[currentQuestionPointer];
+  const currentQuestion = fillInTheBlankQuestions[currentQuestionIndex];
+
+  const fetchFeedbackFromAI = async (question, index) => {
     setIsFeedbackLoading(true);
     const prompt = `The user was given the sentence: "${question.sentence}". The missing word was "${question.correctAnswer}". Provide a concise grammar explanation for why "${question.correctAnswer}" is the correct word in this context. Also, provide the Vietnamese translation of the full sentence. Format the response as a JSON object with two keys: "grammar" and "translation". Example: {"grammar": "Explanation here...", "translation": "Translation here..."}`;
     
+    let feedbackData;
     try {
-      const result = await callOpenRouterAPI(prompt);
-      const feedbackData = JSON.parse(result);
-
-      // Cập nhật câu hỏi hiện tại với dữ liệu từ AI
-      const updatedQuestions = [...fillInTheBlankQuestions];
-      updatedQuestions[currentQuestionIndex] = {
-        ...question,
-        grammar: feedbackData.grammar,
-        translation: feedbackData.translation,
-        explanation: `The correct word is "${question.correctAnswer}".`
-      };
-      setFillInTheBlankQuestions(updatedQuestions);
-
+      const result = await callOpenRouterAPI(prompt, selectedModel);
+      feedbackData = JSON.parse(result);
     } catch (error) {
       console.error("Failed to parse feedback from AI:", error);
-      // Cung cấp feedback mặc định nếu AI lỗi
-      const updatedQuestions = [...fillInTheBlankQuestions];
-      updatedQuestions[currentQuestionIndex] = {
-        ...question,
+      feedbackData = {
         grammar: "Could not load grammar from AI.",
         translation: "Could not load translation from AI.",
-        explanation: `The correct word is "${question.correctAnswer}".`
       };
-      setFillInTheBlankQuestions(updatedQuestions);
-    } finally {
-      setIsFeedbackLoading(false);
     }
+
+    // FIX: Dùng functional update để tránh state cũ (stale state)
+    setFillInTheBlankQuestions(prevQuestions => {
+      const newQuestions = [...prevQuestions];
+      newQuestions[index] = {
+        ...newQuestions[index],
+        grammar: feedbackData.grammar,
+        translation: feedbackData.translation,
+        explanation: `The correct word is "${newQuestions[index].correctAnswer}".`
+      };
+      return newQuestions;
+    });
+    
+    setIsFeedbackLoading(false);
   };
 
   const handleAnswerSelect = (answer) => {
@@ -79,47 +85,50 @@ const PracticeTab = () => {
       setStats(prev => ({ ...prev, correct: prev.correct + 1 }));
     } else {
       setStats(prev => ({ ...prev, incorrect: prev.incorrect + 1 }));
-      setWrongAnswerQueue(prev => [...prev, currentQuestionIndex]);
+      // Thêm chỉ số của câu sai vào danh sách, không trùng lặp
+      setWrongAnswerIndices(prev => [...new Set([...prev, currentQuestionIndex])]);
     }
-    setStats(prev => ({...prev, answered: prev.answered + 1}));
 
-    // Gọi AI để lấy feedback sau khi trả lời
-    if (!currentQuestion.grammar) { // Chỉ gọi nếu chưa có feedback
-        fetchFeedbackFromAI(currentQuestion);
+    // Chỉ gọi AI để lấy feedback nếu câu hỏi đó chưa có feedback
+    if (!currentQuestion.grammar && !currentQuestion.translation) {
+      fetchFeedbackFromAI(currentQuestion, currentQuestionIndex);
     }
   };
 
   const handleNextQuestion = () => {
-    setIsAnswered(false);
-    setSelectedAnswer(null);
+    const nextPointer = currentQuestionPointer + 1;
+    setAnsweredInRound(prev => prev + 1);
 
-    if (wrongAnswerQueue.length > 0 && Math.random() < 0.7) {
-      const nextWrongIndex = wrongAnswerQueue[0];
-      setWrongAnswerQueue(prev => prev.slice(1));
-      setCurrentQuestionIndex(nextWrongIndex);
-      return;
-    }
-
-    if (unansweredQuestions.length > 1) {
-        const remaining = unansweredQuestions.filter(qIndex => qIndex !== currentQuestionIndex);
-        setUnansweredQuestions(remaining);
-        setCurrentQuestionIndex(remaining[0]);
+    // NEW LOGIC: Logic chuyển câu hỏi mới
+    if (nextPointer < questionOrder.length) {
+      // Nếu chưa hết vòng, đi đến câu tiếp theo
+      setCurrentQuestionPointer(nextPointer);
+      setIsAnswered(false);
+      setSelectedAnswer(null);
     } else {
-        alert("You have completed all questions! A new round will begin.");
-        setUnansweredQuestions(questionOrder);
-        setCurrentQuestionIndex(questionOrder[0]);
-        setStats({ answered: 0, correct: 0, incorrect: 0 });
+      // Nếu đã hết vòng
+      if (wrongAnswerIndices.length > 0) {
+        // Bắt đầu vòng ôn tập với những câu sai
+        alert(`Round complete! Now starting a review round with ${wrongAnswerIndices.length} incorrect answers.`);
+        startNewRound(wrongAnswerIndices);
+        setWrongAnswerIndices([]); // Xóa danh sách câu sai để chuẩn bị cho vòng sau
+      } else {
+        // Nếu không có câu sai, chơi lại từ đầu
+        alert("Excellent! You answered all questions correctly. Let's start over!");
+        const allIndices = Array.from(Array(fillInTheBlankQuestions.length).keys());
+        startNewRound(allIndices);
+      }
     }
   };
-
-  if (!fillInTheBlankQuestions || fillInTheBlankQuestions.length === 0) {
-    return <p>No data to practice. Please go back to the "Input" tab.</p>;
+  
+  if (!currentQuestion) {
+    return <p>Loading questions or round complete...</p>;
   }
   
   return (
     <div className="practice-tab-container">
-      <Stats stats={stats} total={fillInTheBlankQuestions.length} />
-      <ProgressBar value={stats.answered} max={fillInTheBlankQuestions.length} />
+      <Stats stats={{...stats, answered: answeredInRound}} total={questionOrder.length} />
+      <ProgressBar value={answeredInRound} max={questionOrder.length} />
       
       <Question 
         question={currentQuestion}
@@ -133,7 +142,7 @@ const PracticeTab = () => {
           <Feedback 
             isCorrect={selectedAnswer === currentQuestion.correctAnswer}
             question={currentQuestion}
-            isLoading={isFeedbackLoading} // <-- Truyền state loading xuống
+            isLoading={isFeedbackLoading}
           />
           <Button onClick={handleNextQuestion} disabled={isFeedbackLoading}>
             {isFeedbackLoading ? <div className="spinner"></div> : 'Next Question →'}
