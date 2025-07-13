@@ -11,7 +11,8 @@ export const AppProvider = ({ children }) => {
     fillInTheBlankQuestions, 
     setFillInTheBlankQuestions, // <-- THÊM DÒNG NÀY
     orderingQuestions, 
-    generateQuestions 
+    generateQuestions,
+    regenerateQuestion // <-- Lấy hàm mới từ hook
   } = useQuestionGenerator();
 
   const processAndStoreText = (text) => {
@@ -38,6 +39,7 @@ export const AppProvider = ({ children }) => {
     setFillInTheBlankQuestions, // <-- THÊM DÒNG NÀY
     orderingQuestions,
     processAndStoreText,
+    regenerateQuestion // <-- Thêm vào context
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
