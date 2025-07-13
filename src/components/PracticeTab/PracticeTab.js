@@ -6,117 +6,106 @@ import Feedback from './Feedback';
 import Button from '../common/Button';
 import './PracticeTab.css';
 
+// Prompt để tạo câu hỏi hoàn chỉnh từ một câu văn
+const createQuestionPrompt = (sentence) => {
+  return `Given the English sentence: "${sentence}".
+Your task is to create a challenging fill-in-the-blank question for an English learner.
+1. Analyze the sentence and choose a single, meaningful word to be the blanked-out answer. The word must be at least 3 characters long.
+2. Create three incorrect but plausible distractor words. They should be the same grammatical type as the correct answer.
+3. Provide a concise grammar explanation for why the correct word is the right choice in this context.
+4. Provide the full Vietnamese translation of the sentence.
+
+Return the result ONLY as a single, raw JSON object with the following structure. Do not include any extra text or markdown formatting.
+{
+  "question_sentence": "The sentence with '_____' in place of the correct word.",
+  "options": ["correct_word", "distractor1", "distractor2", "distractor3"],
+  "correct_answer": "the_correct_word_in_lowercase",
+  "grammar_explanation": "Your grammar explanation here.",
+  "translation": "Your Vietnamese translation here."
+}`;
+};
+
 const PracticeTab = () => {
-  const { 
-    fillInTheBlankQuestions, 
-    setFillInTheBlankQuestions, 
-    selectedModel
-  } = useContext(AppContext);
+  const { sentences, selectedModel } = useContext(AppContext);
   
-  // Trạng thái cốt lõi
-  const [masterQuestionList, setMasterQuestionList] = useState([]); // Danh sách câu hỏi gốc không bao giờ thay đổi
-  const [practiceQueue, setPracticeQueue] = useState([]); // Hàng đợi câu hỏi cho vòng hiện tại
   const [currentQuestion, setCurrentQuestion] = useState(null);
-  
-  // Trạng thái giao diện
+  const [isLoading, setIsLoading] = useState(true); // Bắt đầu với trạng thái loading
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
-  const [isFeedbackLoading, setIsFeedbackLoading] = useState(false);
 
-  // Khởi tạo khi có bộ câu hỏi mới
-  useEffect(() => {
-    if (fillInTheBlankQuestions.length > 0) {
-      // Sao chép câu hỏi vào danh sách chính để làm nguồn
-      setMasterQuestionList([...fillInTheBlankQuestions]);
-      // Bắt đầu vòng đầu tiên với tất cả câu hỏi
-      setPracticeQueue(shuffleArray([...fillInTheBlankQuestions]));
+  const pickAndProcessNextQuestion = useCallback(async () => {
+    if (sentences.length === 0) return;
+
+    setIsLoading(true);
+    setIsAnswered(false);
+    setSelectedAnswer(null);
+    setCurrentQuestion(null); // Xóa câu hỏi cũ để hiển thị loading
+
+    try {
+      // 1. Chọn ngẫu nhiên một câu văn gốc
+      const randomIndex = Math.floor(Math.random() * sentences.length);
+      const sentenceToProcess = sentences[randomIndex];
+
+      // 2. Gửi câu văn đó đến AI để tạo câu hỏi hoàn chỉnh
+      const prompt = createQuestionPrompt(sentenceToProcess);
+      const result = await callOpenRouterAPI(prompt, selectedModel);
+      
+      // 3. Parse JSON và cập nhật state
+      const jsonString = result.match(/{[\s\S]*}/);
+      if (jsonString) {
+        const questionData = JSON.parse(jsonString[0]);
+        // Xáo trộn đáp án
+        questionData.options = questionData.options.sort(() => Math.random() - 0.5);
+        setCurrentQuestion(questionData);
+      } else {
+        throw new Error("Failed to parse JSON from AI response.");
+      }
+    } catch (error) {
+      console.error("Failed to generate next question:", error);
+      // Có thể thêm state để hiển thị lỗi cho người dùng
+    } finally {
+      setIsLoading(false);
     }
-  }, [fillInTheBlankQuestions]);
+  }, [sentences, selectedModel]);
 
-  // Lấy câu hỏi tiếp theo từ hàng đợi
+  // Tải câu hỏi đầu tiên khi component được mở
   useEffect(() => {
-    if (practiceQueue.length > 0 && !currentQuestion) {
-      const nextQueue = [...practiceQueue];
-      const nextQuestion = nextQueue.shift(); // Lấy câu hỏi đầu tiên
-      setCurrentQuestion(nextQuestion);
-      setPracticeQueue(nextQueue);
-    }
-  }, [practiceQueue, currentQuestion]);
-
+    pickAndProcessNextQuestion();
+  }, [pickAndProcessNextQuestion]);
 
   const handleAnswerSelect = (answer) => {
     if (isAnswered) return;
     setIsAnswered(true);
     setSelectedAnswer(answer);
-
-    // Lấy feedback từ AI nếu cần
-    if (!currentQuestion.grammar) {
-        fetchFeedbackFromAI(currentQuestion);
-    }
   };
-
+  
+  // Khi nhấn "Next", chỉ cần gọi lại hàm xử lý
   const handleNextQuestion = () => {
-    const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
-
-    let updatedQueue = [...practiceQueue];
-
-    if (!isCorrect) {
-      // Nếu trả lời sai, thêm câu hỏi này vào lại cuối hàng đợi để ôn tập
-      updatedQueue.push(currentQuestion);
-    }
-    
-    // Kiểm tra nếu hàng đợi trống
-    if (updatedQueue.length === 0) {
-        // Vòng chơi kết thúc, bắt đầu lại với tất cả câu hỏi
-        updatedQueue = shuffleArray([...masterQuestionList]);
-    }
-
-    // Lấy câu hỏi tiếp theo
-    const nextQuestion = updatedQueue.shift(); // Lấy phần tử đầu tiên
-
-    // Cập nhật trạng thái cho vòng mới
-    setPracticeQueue(updatedQueue);
-    setCurrentQuestion(nextQuestion);
-    setIsAnswered(false);
-    setSelectedAnswer(null);
+    pickAndProcessNextQuestion();
   };
-
-  // Hàm shuffle mảng tiện ích
-  const shuffleArray = (array) => {
-    return [...array].sort(() => Math.random() - 0.5);
-  };
-
-  const fetchFeedbackFromAI = async (question) => {
-    // ... (Hàm này giữ nguyên, không thay đổi)
-    setIsFeedbackLoading(true);
-    const prompt = `The user was given the sentence: "${question.sentence}". The missing word was "${question.correctAnswer}". Provide a concise grammar explanation for why "${question.correctAnswer}" is the correct word in this context. Also, provide the Vietnamese translation of the full sentence. Format the response as a JSON object with two keys: "grammar" and "translation".`;
-    
-    let feedbackData;
-    try {
-      const result = await callOpenRouterAPI(prompt, selectedModel);
-      feedbackData = JSON.parse(result);
-    } catch (error) {
-      feedbackData = { grammar: "AI feedback failed.", translation: "AI feedback failed." };
-    }
-
-    setCurrentQuestion(prev => (prev ? {
-      ...prev,
-      grammar: feedbackData.grammar,
-      translation: feedbackData.translation,
-      explanation: `The correct word is "${prev.correctAnswer}".`
-    } : null));
-    
-    setIsFeedbackLoading(false);
-  };
+  
+  // Giao diện Loading toàn màn hình
+  if (isLoading) {
+    return (
+        <div className="processing-container">
+            <div className="spinner"></div>
+            <h4>AI is generating the next question...</h4>
+        </div>
+    );
+  }
 
   if (!currentQuestion) {
-    return <p>Loading questions or preparing next round...</p>;
+    return <p>Could not load a question. Please try again.</p>;
   }
   
   return (
     <div className="practice-tab-container">
       <Question 
-        question={currentQuestion}
+        question={{
+            question: currentQuestion.question_sentence,
+            options: currentQuestion.options,
+            correctAnswer: currentQuestion.correct_answer,
+        }}
         onAnswerSelect={handleAnswerSelect}
         selectedAnswer={selectedAnswer}
         isAnswered={isAnswered}
@@ -125,16 +114,17 @@ const PracticeTab = () => {
       {isAnswered && (
         <div className="feedback-and-next">
           <Feedback 
-            isCorrect={selectedAnswer === currentQuestion.correctAnswer}
-            question={currentQuestion}
-            isLoading={isFeedbackLoading}
+            isCorrect={selectedAnswer.toLowerCase() === currentQuestion.correct_answer.toLowerCase()}
+            question={{
+                explanation: `The correct word is "${currentQuestion.correct_answer}".`,
+                grammar: currentQuestion.grammar_explanation,
+                translation: currentQuestion.translation,
+            }}
+            isLoading={false}
           />
-          
-          {!isFeedbackLoading && (
-            <Button onClick={handleNextQuestion}>
-              Next →
-            </Button>
-          )}
+          <Button onClick={handleNextQuestion}>
+            Next Question →
+          </Button>
         </div>
       )}
     </div>
