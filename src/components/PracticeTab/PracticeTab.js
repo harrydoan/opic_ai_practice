@@ -16,38 +16,49 @@ const PracticeTab = () => {
     regenerateQuestion 
   } = useContext(AppContext);
   
+  // State quản lý câu hỏi
   const [mainQueue, setMainQueue] = useState([]);
   const [reviewQueue, setReviewQueue] = useState([]);
   const [currentQuestion, setCurrentQuestion] = useState(null);
   
+  // State quản lý trạng thái trả lời
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [isFeedbackLoading, setIsFeedbackLoading] = useState(false);
 
+  // Khởi tạo vòng lặp
   useEffect(() => {
     if (fillInTheBlankQuestions.length > 0) {
-      setMainQueue([...fillInTheBlankQuestions]);
+      const initialQueue = [...fillInTheBlankQuestions];
+      setMainQueue(initialQueue);
       setReviewQueue([]);
-      setCurrentQuestion(fillInTheBlankQuestions[0]);
+      // Lấy câu hỏi đầu tiên
+      setCurrentQuestion(initialQueue.shift()); 
+      setMainQueue(initialQueue); // Cập nhật lại mainQueue sau khi lấy
     }
   }, [fillInTheBlankQuestions]);
 
+  // Logic chọn câu hỏi tiếp theo
   const pickNextQuestion = useCallback(() => {
     let nextQuestion = null;
     let nextMainQueue = [...mainQueue];
     let nextReviewQueue = [...reviewQueue];
 
+    // Ưu tiên 70% lấy từ hàng đợi ôn tập (reviewQueue) nếu có
     if (nextReviewQueue.length > 0 && Math.random() < 0.7) {
       nextQuestion = nextReviewQueue.shift();
     } else if (nextMainQueue.length > 0) {
       nextQuestion = nextMainQueue.shift();
     } else if (nextReviewQueue.length > 0) {
+      // Nếu mainQueue hết thì lấy nốt trong reviewQueue
       nextQuestion = nextReviewQueue.shift();
     } else {
+      // Nếu tất cả đã xong, bắt đầu lại từ đầu
       nextMainQueue = [...fillInTheBlankQuestions];
       nextQuestion = nextMainQueue.shift();
     }
 
+    // Nếu câu hỏi được chọn đã từng trả lời đúng -> làm mới nó
     if (nextQuestion && nextQuestion.answeredCorrectly) {
       const newVersion = regenerateQuestion(
         nextQuestion.sentence, 
@@ -67,6 +78,7 @@ const PracticeTab = () => {
 
   }, [mainQueue, reviewQueue, fillInTheBlankQuestions, regenerateQuestion]);
 
+
   const fetchFeedbackFromAI = async (question) => {
     setIsFeedbackLoading(true);
     const prompt = `The user was given the sentence: "${question.sentence}". The missing word was "${question.correctAnswer}". Provide a concise grammar explanation for why "${question.correctAnswer}" is the correct word in this context. Also, provide the Vietnamese translation of the full sentence. Format the response as a JSON object with two keys: "grammar" and "translation".`;
@@ -79,12 +91,13 @@ const PracticeTab = () => {
       feedbackData = { grammar: "AI feedback failed.", translation: "AI feedback failed." };
     }
 
-    setCurrentQuestion(prev => ({
+    // Cập nhật câu hỏi hiện tại với feedback
+    setCurrentQuestion(prev => (prev ? {
       ...prev,
       grammar: feedbackData.grammar,
       translation: feedbackData.translation,
       explanation: `The correct word is "${prev.correctAnswer}".`
-    }));
+    } : null));
     
     setIsFeedbackLoading(false);
   };
@@ -97,9 +110,11 @@ const PracticeTab = () => {
     const isCorrect = answer === currentQuestion.correctAnswer;
     
     if (isCorrect) {
+      // Đánh dấu đã trả lời đúng và thêm vào cuối hàng đợi chính
       const masteredQuestion = { ...currentQuestion, answeredCorrectly: true };
       setMainQueue(prev => [...prev, masteredQuestion]);
     } else {
+      // Thêm vào hàng đợi ôn tập
       setReviewQueue(prev => [...prev, currentQuestion]);
     }
 
