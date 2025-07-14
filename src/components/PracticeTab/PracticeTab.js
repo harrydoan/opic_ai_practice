@@ -29,26 +29,30 @@ const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
 
 const PracticeTab = () => {
   const { sentenceData, setSentenceData, selectedModel } = useContext(AppContext);
+  
   const [currentQuestion, setCurrentQuestion] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
-  const [shuffledQueue, setShuffledQueue] = useState([]);
-  const [pointer, setPointer] = useState(0);
 
-  const pickAndProcessNextQuestion = useCallback(async (currentPointer, queue) => {
-    if (queue.length === 0) return;
+  // State cho logic "Bộ bài"
+  const [deck, setDeck] = useState([]); // "Bộ bài" đã xáo trộn
+  const [pointer, setPointer] = useState(0); // Vị trí "lá bài" đang rút
+
+  // Hàm xử lý logic cốt lõi
+  const fetchQuestionForPointer = useCallback(async (targetPointer, currentDeck) => {
+    if (currentDeck.length === 0) return;
 
     setIsLoading(true);
     setIsAnswered(false);
-    setSelectedAnswer(null);
-
-    const sentenceIndex = queue[currentPointer];
+    
+    const sentenceIndex = currentDeck[targetPointer];
     const sentenceObject = sentenceData.find(s => s.originalIndex === sentenceIndex);
+
     if (!sentenceObject) {
-        setIsLoading(false);
-        console.error("Sentence object not found for index:", sentenceIndex);
-        return;
+      console.error("Sentence object not found for index:", sentenceIndex);
+      setIsLoading(false);
+      return;
     }
 
     try {
@@ -56,33 +60,35 @@ const PracticeTab = () => {
       const result = await callOpenRouterAPI(prompt, selectedModel);
       const jsonString = result.match(/{[\s\S]*}/);
       let questionData = JSON.parse(jsonString[0]);
-      
+
+      // Tự sửa lỗi của AI
       const correctAnswerLower = questionData.correct_answer.toLowerCase();
       if (!questionData.options.map(o => o.toLowerCase()).includes(correctAnswerLower)) {
           questionData.options[0] = questionData.correct_answer;
       }
       questionData.options = shuffleArray(questionData.options);
-      questionData.originalIndex = sentenceIndex; 
+      questionData.originalIndex = sentenceIndex;
+      
       setCurrentQuestion(questionData);
     } catch (error) {
       console.error("Failed to generate question:", error);
-      // Move to the next pointer even if there's an error to avoid getting stuck
-      setPointer(p => (p + 1) % queue.length);
+      // Nếu lỗi, tự động chuyển sang câu tiếp theo để tránh bị kẹt
+      setPointer(p => (p + 1));
     } finally {
       setIsLoading(false);
     }
   }, [sentenceData, selectedModel]);
 
-  // useEffect này chỉ để khởi tạo vòng chơi đầu tiên
+
+  // useEffect này chỉ để khởi tạo và tải câu hỏi đầu tiên
   useEffect(() => {
     if (sentenceData.length > 0) {
-      const initialIndices = Array.from(Array(sentenceData.length).keys());
-      const newShuffledQueue = shuffleArray(initialIndices);
-      setShuffledQueue(newShuffledQueue);
+      const initialDeck = shuffleArray(Array.from(sentenceData.keys()));
+      setDeck(initialDeck);
       setPointer(0);
-      pickAndProcessNextQuestion(0, newShuffledQueue);
+      fetchQuestionForPointer(0, initialDeck);
     }
-  }, [sentenceData, pickAndProcessNextQuestion]);
+  }, [sentenceData]); // Chỉ chạy khi có dữ liệu câu mới
 
   const handleAnswerSelect = (answer) => {
     if (isAnswered) return;
@@ -107,18 +113,18 @@ const PracticeTab = () => {
         });
     });
 
-    // Logic chuyển câu hỏi
     let nextPointer = pointer + 1;
-    let currentQueue = shuffledQueue;
+    let nextDeck = deck;
 
-    // Nếu hết vòng, xáo trộn lại và bắt đầu lại từ đầu
-    if (nextPointer >= shuffledQueue.length) {
+    // Nếu đã rút hết "bài", xáo lại và bắt đầu vòng mới
+    if (nextPointer >= deck.length) {
       nextPointer = 0;
-      currentQueue = shuffleArray(shuffledQueue);
-      setShuffledQueue(currentQueue);
+      nextDeck = shuffleArray(deck);
+      setDeck(nextDeck);
     }
+    
     setPointer(nextPointer);
-    pickAndProcessNextQuestion(nextPointer, currentQueue);
+    fetchQuestionForPointer(nextPointer, nextDeck);
   };
   
   if (isLoading) {
