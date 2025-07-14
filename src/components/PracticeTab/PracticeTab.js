@@ -29,18 +29,26 @@ const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
 
 const PracticeTab = () => {
   const { sentenceData, setSentenceData, selectedModel } = useContext(AppContext);
+  
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
-  const [deck, setDeck] = useState([]);
-  const [pointer, setPointer] = useState(0);
 
+  // State cho logic "Bộ bài"
+  const [deck, setDeck] = useState([]); // "Bộ bài" đã xáo trộn chứa các chỉ số (index)
+  const [pointer, setPointer] = useState(0); // Vị trí "lá bài" đang rút
+
+  // Hàm xử lý logic cốt lõi
   const fetchQuestionForPointer = useCallback(async (targetPointer, currentDeck) => {
     if (currentDeck.length === 0) {
-        setIsLoading(false);
-        return;
+      setIsLoading(false);
+      return;
     }
+
+    // Chuyển sang loading ngay lập tức để tránh "nháy" câu cũ
+    setIsLoading(true);
+    setIsAnswered(false);
     
     const sentenceIndex = currentDeck[targetPointer];
     const sentenceObject = sentenceData.find(s => s.originalIndex === sentenceIndex);
@@ -57,6 +65,7 @@ const PracticeTab = () => {
       const jsonString = result.match(/{[\s\S]*}/);
       let questionData = JSON.parse(jsonString[0]);
 
+      // Tự sửa lỗi của AI
       const correctAnswerLower = questionData.correct_answer.toLowerCase();
       if (!questionData.options.map(o => o.toLowerCase()).includes(correctAnswerLower)) {
           questionData.options[0] = questionData.correct_answer;
@@ -67,27 +76,24 @@ const PracticeTab = () => {
       setCurrentQuestion(questionData);
     } catch (error) {
       console.error("Failed to generate question:", error);
-      // Nếu có lỗi, thử lại với câu hỏi tiếp theo
-      setPointer(p => p + 1); 
+      // Nếu lỗi, tự động chuyển sang câu tiếp theo để tránh bị kẹt
+      setPointer(p => (p + 1));
     } finally {
       setIsLoading(false);
     }
   }, [sentenceData, selectedModel]);
 
+
+  // useEffect này chỉ để khởi tạo và tải câu hỏi đầu tiên
   useEffect(() => {
     if (sentenceData.length > 0) {
       const initialDeck = shuffleArray(Array.from(Array(sentenceData.length).keys()));
       setDeck(initialDeck);
       setPointer(0);
-    }
-  }, [sentenceData]);
-
-  useEffect(() => {
-    if (deck.length > 0) {
-        fetchQuestionForPointer(pointer, deck);
+      fetchQuestionForPointer(0, initialDeck);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deck, pointer]);
+  }, [sentenceData]); // Chỉ chạy khi có dữ liệu câu mới
 
   const handleAnswerSelect = (answer) => {
     if (isAnswered) return;
@@ -96,7 +102,7 @@ const PracticeTab = () => {
   };
   
   const handleNextQuestion = () => {
-    // Cập nhật bộ nhớ cho câu vừa trả lời
+    // Cập nhật "bộ nhớ" của câu vừa trả lời
     const answerToRemember = currentQuestion.correct_answer.toLowerCase();
     setSentenceData(prevData => {
         return prevData.map(s => {
@@ -104,7 +110,7 @@ const PracticeTab = () => {
                 const newUsedWords = [...new Set([...s.usedWords, answerToRemember])];
                 const allWords = s.originalText.split(' ').filter(w => w.length >= 3);
                 if (newUsedWords.length >= allWords.length) {
-                    return { ...s, usedWords: [] };
+                    return { ...s, usedWords: [] }; // Reset bộ nhớ nếu đã dùng hết từ
                 }
                 return { ...s, usedWords: newUsedWords };
             }
@@ -112,23 +118,18 @@ const PracticeTab = () => {
         });
     });
 
-    // CHỈNH SỬA QUAN TRỌNG: Chuyển sang trạng thái loading ngay lập tức
-    setIsLoading(true);
-    setIsAnswered(false);
-    setSelectedAnswer(null);
-
-    // Tính toán con trỏ và bộ bài cho câu tiếp theo
     let nextPointer = pointer + 1;
-    let nextDeck = deck;
+    let currentDeck = deck;
 
+    // Nếu đã rút hết "bài", xáo lại và bắt đầu vòng mới
     if (nextPointer >= deck.length) {
       nextPointer = 0;
-      nextDeck = shuffleArray(deck);
-      setDeck(nextDeck);
+      currentDeck = shuffleArray(deck);
+      setDeck(currentDeck);
     }
     
-    // Cập nhật con trỏ, việc này sẽ kích hoạt useEffect để tải câu hỏi mới
     setPointer(nextPointer);
+    fetchQuestionForPointer(nextPointer, currentDeck);
   };
   
   if (isLoading) {
