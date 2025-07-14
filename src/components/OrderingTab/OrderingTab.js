@@ -3,134 +3,121 @@ import { AppContext } from '../../context/AppContext';
 import Button from '../common/Button';
 import './OrderingTab.css';
 
-// Hàm shuffle mảng tiện ích
-const shuffleArray = (array) => {
-    return [...array].sort(() => Math.random() - 0.5);
-};
+const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
 
 const OrderingTab = () => {
-    const { sentences } = useContext(AppContext);
+    const { sentenceData, setUserDefinedOrder } = useContext(AppContext);
     
-    // State mới để quản lý thứ tự câu hỏi đã xáo trộn
-    const [shuffledIndices, setShuffledIndices] = useState([]);
-    const [pointer, setPointer] = useState(0); // Con trỏ đến vị trí hiện tại trong mảng đã xáo trộn
-
+    // State cho logic vòng chơi
+    const [unansweredIndices, setUnansweredIndices] = useState([]);
+    const [currentSentenceIndex, setCurrentSentenceIndex] = useState(null);
     const [options, setOptions] = useState([]);
+    
+    // State cho giao diện
     const [isAnswered, setIsAnswered] = useState(false);
     const [selectedAnswer, setSelectedAnswer] = useState(null);
+    const [correctlyPlacedCount, setCorrectlyPlacedCount] = useState(0);
 
-    // Hàm tạo các lựa chọn cho câu hỏi hiện tại
-    const generateOptions = useCallback((correctIndex) => {
-        if (sentences.length === 0) return;
+    // Khởi tạo vòng chơi
+    useEffect(() => {
+        if (sentenceData.length > 0) {
+            const allIndices = Array.from(Array(sentenceData.length).keys());
+            setUnansweredIndices(shuffleArray(allIndices));
+            setCorrectlyPlacedCount(0);
+        }
+    }, [sentenceData]);
+    
+    // Lấy câu hỏi tiếp theo từ danh sách chưa trả lời
+    useEffect(() => {
+        if (unansweredIndices.length > 0) {
+            setCurrentSentenceIndex(unansweredIndices[0]);
+        } else if (sentenceData.length > 0) {
+            // Hoàn thành xuất sắc!
+            const finalOrder = Array.from(Array(sentenceData.length).keys());
+            setUserDefinedOrder(finalOrder); // Lưu lại thứ tự đúng vào context
+        }
+    }, [unansweredIndices, sentenceData.length, setUserDefinedOrder]);
 
-        const correctPosition = correctIndex + 1;
+    // Tạo các lựa chọn đáp án khi có câu hỏi mới
+    const generateOptions = useCallback(() => {
+        if (currentSentenceIndex === null || sentenceData.length === 0) return;
+
+        const correctPosition = currentSentenceIndex + 1;
         let wrongPositions = [];
-
-        // Tạo 3 vị trí sai ngẫu nhiên
         while (wrongPositions.length < 3) {
-            const randomPos = Math.floor(Math.random() * sentences.length) + 1;
+            const randomPos = Math.floor(Math.random() * sentenceData.length) + 1;
             if (randomPos !== correctPosition && !wrongPositions.includes(randomPos)) {
                 wrongPositions.push(randomPos);
             }
         }
-        
-        const shuffledOptions = shuffleArray([correctPosition, ...wrongPositions]);
-        setOptions(shuffledOptions);
-    }, [sentences.length]);
+        setOptions(shuffleArray([correctPosition, ...wrongPositions]));
+    }, [currentSentenceIndex, sentenceData.length]);
 
-    // Khởi tạo hoặc khi có bộ câu mới
     useEffect(() => {
-        if (sentences.length > 0) {
-            // Tạo một mảng các chỉ số (0, 1, 2,...) và xáo trộn nó
-            const indices = Array.from(Array(sentences.length).keys());
-            setShuffledIndices(shuffleArray(indices));
-            setPointer(0);
-        }
-    }, [sentences]);
-
-    // Tải câu hỏi và tạo đáp án khi con trỏ thay đổi
-    useEffect(() => {
-        if (shuffledIndices.length > 0) {
-            const originalIndex = shuffledIndices[pointer];
-            generateOptions(originalIndex);
-        }
-    }, [pointer, shuffledIndices, generateOptions]);
+        generateOptions();
+    }, [generateOptions]);
 
     const handleAnswerSelect = (position) => {
         if (isAnswered) return;
         setSelectedAnswer(position);
         setIsAnswered(true);
+        if (position === currentSentenceIndex + 1) {
+            setCorrectlyPlacedCount(prev => prev + 1);
+        }
     };
 
     const handleNextQuestion = () => {
-        const nextPointer = pointer + 1;
-        // Nếu đã duyệt hết danh sách đã xáo trộn
-        if (nextPointer >= shuffledIndices.length) {
-            // Tạo một danh sách xáo trộn mới và bắt đầu lại từ đầu
-            const indices = Array.from(Array(sentences.length).keys());
-            setShuffledIndices(shuffleArray(indices));
-            setPointer(0);
-        } else {
-            // Nếu chưa, đi đến câu tiếp theo trong danh sách xáo trộn
-            setPointer(nextPointer);
-        }
         setIsAnswered(false);
         setSelectedAnswer(null);
+        // Loại bỏ câu vừa trả lời khỏi danh sách
+        setUnansweredIndices(prev => prev.slice(1));
     };
 
-    if (sentences.length === 0) {
-        return <p>Không có dữ liệu câu. Vui lòng xử lý văn bản ở tab "Nhập liệu" trước.</p>;
+    if (sentenceData.length === 0) {
+        return <p>Không có dữ liệu. Vui lòng xử lý văn bản ở tab "Nhập liệu".</p>;
     }
     
-    // Lấy thông tin câu hỏi hiện tại dựa trên con trỏ và mảng đã xáo trộn
-    const originalIndex = shuffledIndices[pointer];
-    if (originalIndex === undefined) {
-        return <p>Đang tải câu hỏi...</p>;
+    // Khi đã hoàn thành tất cả
+    if (unansweredIndices.length === 0) {
+        return (
+            <div className="ordering-tab-container completion-message">
+                <h4>🎉 Chúc mừng!</h4>
+                <p>Bạn đã sắp xếp thành công toàn bộ đoạn văn.</p>
+                <p>Vòng luyện tập tiếp theo sẽ đi theo đúng thứ tự câu chuyện này.</p>
+                <Button onClick={() => {
+                    // Chơi lại từ đầu
+                    const allIndices = Array.from(Array(sentenceData.length).keys());
+                    setUnansweredIndices(shuffleArray(allIndices));
+                    setCorrectlyPlacedCount(0);
+                }}>Chơi lại</Button>
+            </div>
+        );
     }
-    const currentSentence = sentences[originalIndex];
-    const correctPosition = originalIndex + 1;
+    
+    const currentSentence = sentenceData.find(s => s.originalIndex === currentSentenceIndex)?.originalText;
+    const correctPosition = currentSentenceIndex + 1;
 
     return (
         <div className="ordering-tab-container">
+            <p className="progress-counter">Đã xếp đúng: {correctlyPlacedCount} / {sentenceData.length}</p>
             <h3>❓ Câu này ở vị trí thứ mấy trong đoạn văn?</h3>
-            <div className="sentence-box">
-                "{currentSentence}"
-            </div>
+            <div className="sentence-box">"{currentSentence}"</div>
             <div className="ordering-options-grid">
                 {options.map(option => {
                     let btnClass = 'ordering-btn';
                     if (isAnswered) {
-                        if (option === correctPosition) {
-                            btnClass += ' correct';
-                        } else if (option === selectedAnswer) {
-                            btnClass += ' incorrect';
-                        } else {
-                            btnClass += ' disabled';
-                        }
+                        if (option === correctPosition) btnClass += ' correct';
+                        else if (option === selectedAnswer) btnClass += ' incorrect';
+                        else btnClass += ' disabled';
                     }
-                    return (
-                        <button 
-                            key={option}
-                            className={btnClass}
-                            onClick={() => handleAnswerSelect(option)}
-                            disabled={isAnswered}
-                        >
-                            Vị trí {option}
-                        </button>
-                    );
+                    return <button key={option} className={btnClass} onClick={() => handleAnswerSelect(option)} disabled={isAnswered}>Vị trí {option}</button>;
                 })}
             </div>
             {isAnswered && (
                 <div className="ordering-feedback">
-                    <h4>
-                        {selectedAnswer === correctPosition ? '✅ Chính xác!' : '❌ Sai rồi!'}
-                    </h4>
-                    <p>
-                        Câu này đứng ở vị trí thứ <strong>{correctPosition}</strong> trong đoạn văn.
-                    </p>
-                    <Button onClick={handleNextQuestion}>
-                        Câu tiếp theo →
-                    </Button>
+                    <h4>{selectedAnswer === correctPosition ? '✅ Chính xác!' : '❌ Sai rồi!'}</h4>
+                    <p>Câu này đứng ở vị trí thứ <strong>{correctPosition}</strong>.</p>
+                    <Button onClick={handleNextQuestion}>Câu tiếp theo →</Button>
                 </div>
             )}
         </div>
