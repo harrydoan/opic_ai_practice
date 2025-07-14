@@ -6,12 +6,10 @@ import './InputTab.css';
 
 const cleanOpicResponse = (rawText) => {
   if (!rawText) return '';
-
   const prefixesToRemove = [
     'Question:', 'Sample Answer:', 'Answer:',
     'Câu hỏi:', 'Câu trả lời mẫu:', 'Câu trả lời:'
   ];
-
   const cleanedLines = rawText.split('\n').map(line => {
     let cleanedLine = line.trim();
     for (const prefix of prefixesToRemove) {
@@ -22,17 +20,13 @@ const cleanOpicResponse = (rawText) => {
     }
     return cleanedLine;
   });
-
   return cleanedLines.join('\n').trim();
 };
 
 const InputTab = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { 
-    // ===================================================
-    // == LỖI Ở ĐÂY - THÊM `setSentenceData` VÀO DANH SÁCH ==
-    // ===================================================
-    setSentenceData, 
+    setSentenceData,
     selectedModel, setSelectedModel, 
     setActiveTab,
     opicText, setOpicText
@@ -49,12 +43,9 @@ const InputTab = () => {
 Of course. One of the most memorable trips I've ever taken was to Da Nang last summer. The beaches were absolutely pristine, and the local cuisine was a delightful experience. I particularly enjoyed visiting the Marble Mountains and seeing the city from above. It was a perfect blend of relaxation and adventure."
 
 Now, generate a new, random question and answer following this format exactly.`;
-
     const result = await callOpenRouterAPI(OPIC_PROMPT, selectedModel);
-    
     const cleanedText = cleanOpicResponse(result);
     setOpicText(cleanedText);
-    
     setIsLoading(false);
   };
   
@@ -63,15 +54,12 @@ Now, generate a new, random question and answer following this format exactly.`;
       .split(/[.!?]+/)
       .map(s => s.trim())
       .filter(s => s.length > 10 && s.split(' ').length >= 5);
-    
     if (extractedSentences.length === 0) return;
-
     const initialSentenceData = extractedSentences.map((text, index) => ({
       originalText: text,
       originalIndex: index,
       usedWords: []
     }));
-
     setSentenceData(initialSentenceData);
     setActiveTab('Luyện tập');
   };
@@ -80,7 +68,6 @@ Now, generate a new, random question and answer following this format exactly.`;
     { id: 'openai/gpt-4o-mini', name: 'OpenAI: GPT-4o Mini (Cân bằng)' },
     { id: 'google/gemini-flash-1.5', name: 'Google: Gemini 1.5 Flash (Nhanh)' },
     { id: 'anthropic/claude-3.5-sonnet', name: 'Anthropic: Claude 3.5 Sonnet (Mạnh mẽ)' },
-    { id: 'google/gemma-3n-2b:free', name: 'Google: Gemma 3N 2B (Miễn phí)' },
   ];
 
   return (

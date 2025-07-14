@@ -6,10 +6,8 @@ import Feedback from './Feedback';
 import Button from '../common/Button';
 import './PracticeTab.css';
 
-// Prompt được nâng cấp để nhận danh sách từ cần loại trừ
 const createQuestionPrompt = (sentence, wordsToExclude) => {
   const excludeList = wordsToExclude.length > 0 ? `Do NOT choose any of the following words as the answer: [${wordsToExclude.join(', ')}].` : '';
-
   return `Given the English sentence: "${sentence}".
 Your task is to create a challenging fill-in-the-blank question.
 1. Choose a single, meaningful word to be the blanked-out answer. The word must be at least 3 characters long.
@@ -17,7 +15,6 @@ Your task is to create a challenging fill-in-the-blank question.
 3. Create three incorrect but plausible distractor words of the same grammatical type.
 4. Provide a concise grammar explanation in Vietnamese.
 5. Provide the full Vietnamese translation of the sentence.
-
 Return the result ONLY as a single, raw JSON object with the following structure. Do not include any extra text or markdown formatting.
 {
   "question_sentence": "The sentence with '_____' in place of the correct word.",
@@ -32,17 +29,13 @@ const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
 
 const PracticeTab = () => {
   const { sentenceData, setSentenceData, selectedModel } = useContext(AppContext);
-  
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
-
-  // State mới cho logic vòng chơi
   const [shuffledQueue, setShuffledQueue] = useState([]);
   const [pointer, setPointer] = useState(0);
 
-  // Khởi tạo vòng chơi đầu tiên
   useEffect(() => {
     if (sentenceData.length > 0) {
       const initialIndices = Array.from(Array(sentenceData.length).keys());
@@ -53,58 +46,46 @@ const PracticeTab = () => {
 
   const pickAndProcessNextQuestion = useCallback(async () => {
     if (shuffledQueue.length === 0) return;
-
     setIsLoading(true);
     setIsAnswered(false);
     setSelectedAnswer(null);
-
     let currentPointer = pointer;
-    // Nếu hết vòng, xáo trộn lại và bắt đầu vòng mới
     if (currentPointer >= shuffledQueue.length) {
         currentPointer = 0;
         setShuffledQueue(shuffleArray(shuffledQueue));
     }
-
     const sentenceIndex = shuffledQueue[currentPointer];
     const sentenceObject = sentenceData.find(s => s.originalIndex === sentenceIndex);
-
     if (!sentenceObject) {
         setIsLoading(false);
         return;
     }
-
     try {
       const prompt = createQuestionPrompt(sentenceObject.originalText, sentenceObject.usedWords);
       const result = await callOpenRouterAPI(prompt, selectedModel);
-      
       const jsonString = result.match(/{[\s\S]*}/);
-      const questionData = JSON.parse(jsonString[0]);
-
-      // Kiểm tra và tự sửa lỗi
+      let questionData = JSON.parse(jsonString[0]);
       const correctAnswerLower = questionData.correct_answer.toLowerCase();
       if (!questionData.options.map(o => o.toLowerCase()).includes(correctAnswerLower)) {
           questionData.options[0] = questionData.correct_answer;
       }
       questionData.options = shuffleArray(questionData.options);
-      
-      // Thêm originalIndex vào để biết câu hỏi này thuộc về câu gốc nào
       questionData.originalIndex = sentenceIndex; 
       setCurrentQuestion(questionData);
-
     } catch (error) {
       console.error("Failed to generate question:", error);
+      // If error, try fetching the next question in the sequence
+      setPointer(p => p + 1);
     } finally {
       setIsLoading(false);
-      setPointer(currentPointer + 1); // Cập nhật con trỏ cho lần tiếp theo
     }
   }, [pointer, shuffledQueue, sentenceData, selectedModel]);
 
-  // Tải câu hỏi đầu tiên hoặc khi vòng chơi được reset
   useEffect(() => {
     if (shuffledQueue.length > 0) {
       pickAndProcessNextQuestion();
     }
-  }, [shuffledQueue]); // Chỉ chạy khi bộ bài được tạo
+  }, [shuffledQueue, pointer]); // Trigger when queue or pointer changes
 
   const handleAnswerSelect = (answer) => {
     if (isAnswered) return;
@@ -113,14 +94,11 @@ const PracticeTab = () => {
   };
   
   const handleNextQuestion = () => {
-    // Cập nhật "bộ nhớ" của câu vừa trả lời
     const answerToRemember = currentQuestion.correct_answer.toLowerCase();
     setSentenceData(prevData => {
         return prevData.map(s => {
             if (s.originalIndex === currentQuestion.originalIndex) {
-                // Thêm từ vừa học vào bộ nhớ, không trùng lặp
                 const newUsedWords = [...new Set([...s.usedWords, answerToRemember])];
-                // Nếu đã che hết các từ, xóa bộ nhớ để bắt đầu lại
                 const allWords = s.originalText.split(' ').filter(w => w.length >= 3);
                 if (newUsedWords.length >= allWords.length) {
                     return { ...s, usedWords: [] };
@@ -130,27 +108,23 @@ const PracticeTab = () => {
             return s;
         });
     });
-
-    // Tải câu hỏi tiếp theo
-    pickAndProcessNextQuestion();
+    setPointer(p => p + 1);
   };
   
   if (isLoading) {
     return (
-        <div className="processing-container">
-            <div className="spinner"></div>
-            <h4>AI is generating the next question...</h4>
-        </div>
+      <div className="processing-container">
+        <div className="spinner"></div>
+        <h4>AI is generating the next question...</h4>
+      </div>
     );
   }
-
   if (!currentQuestion) {
-    return <p>Could not load a question. Please try again.</p>;
+    return <p>Không có câu hỏi nào để hiển thị. Vui lòng kiểm tra lại tab 'Nhập liệu'.</p>;
   }
   
   return (
     <div className="practice-tab-container">
-      {/* Các component con giữ nguyên */}
       <Question 
         question={{
             question: currentQuestion.question_sentence,
@@ -161,7 +135,6 @@ const PracticeTab = () => {
         selectedAnswer={selectedAnswer}
         isAnswered={isAnswered}
       />
-
       {isAnswered && (
         <div className="feedback-and-next">
           <Feedback 
