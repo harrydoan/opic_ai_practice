@@ -30,17 +30,17 @@ const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
 const PracticeTab = () => {
   const { sentenceData, setSentenceData, selectedModel } = useContext(AppContext);
   const [currentQuestion, setCurrentQuestion] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [deck, setDeck] = useState([]);
   const [pointer, setPointer] = useState(0);
 
   const fetchQuestionForPointer = useCallback(async (targetPointer, currentDeck) => {
-    if (currentDeck.length === 0) return;
-
-    setIsLoading(true);
-    setIsAnswered(false);
+    if (currentDeck.length === 0) {
+        setIsLoading(false);
+        return;
+    }
     
     const sentenceIndex = currentDeck[targetPointer];
     const sentenceObject = sentenceData.find(s => s.originalIndex === sentenceIndex);
@@ -67,7 +67,8 @@ const PracticeTab = () => {
       setCurrentQuestion(questionData);
     } catch (error) {
       console.error("Failed to generate question:", error);
-      setPointer(p => (p + 1));
+      // Nếu có lỗi, thử lại với câu hỏi tiếp theo
+      setPointer(p => p + 1); 
     } finally {
       setIsLoading(false);
     }
@@ -78,10 +79,15 @@ const PracticeTab = () => {
       const initialDeck = shuffleArray(Array.from(Array(sentenceData.length).keys()));
       setDeck(initialDeck);
       setPointer(0);
-      fetchQuestionForPointer(0, initialDeck);
+    }
+  }, [sentenceData]);
+
+  useEffect(() => {
+    if (deck.length > 0) {
+        fetchQuestionForPointer(pointer, deck);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sentenceData]);
+  }, [deck, pointer]);
 
   const handleAnswerSelect = (answer) => {
     if (isAnswered) return;
@@ -90,6 +96,7 @@ const PracticeTab = () => {
   };
   
   const handleNextQuestion = () => {
+    // Cập nhật bộ nhớ cho câu vừa trả lời
     const answerToRemember = currentQuestion.correct_answer.toLowerCase();
     setSentenceData(prevData => {
         return prevData.map(s => {
@@ -105,6 +112,12 @@ const PracticeTab = () => {
         });
     });
 
+    // CHỈNH SỬA QUAN TRỌNG: Chuyển sang trạng thái loading ngay lập tức
+    setIsLoading(true);
+    setIsAnswered(false);
+    setSelectedAnswer(null);
+
+    // Tính toán con trỏ và bộ bài cho câu tiếp theo
     let nextPointer = pointer + 1;
     let nextDeck = deck;
 
@@ -114,8 +127,8 @@ const PracticeTab = () => {
       setDeck(nextDeck);
     }
     
+    // Cập nhật con trỏ, việc này sẽ kích hoạt useEffect để tải câu hỏi mới
     setPointer(nextPointer);
-    fetchQuestionForPointer(nextPointer, nextDeck);
   };
   
   if (isLoading) {
