@@ -37,16 +37,15 @@ const PracticeTab = () => {
 
   // State cho logic "Bộ bài"
   const [deck, setDeck] = useState([]); // "Bộ bài" đã xáo trộn chứa các chỉ số (index)
-  const [pointer, setPointer] = useState(0); // Vị trí "lá bài" đang rút
+  const [pointer, setPointer] = useState(-1); // Bắt đầu ở -1 để chưa có câu nào được chọn
 
   // Hàm xử lý logic cốt lõi
   const fetchQuestionForPointer = useCallback(async (targetPointer, currentDeck) => {
-    if (currentDeck.length === 0) {
+    if (currentDeck.length === 0 || targetPointer < 0) {
       setIsLoading(false);
       return;
     }
 
-    // Chuyển sang loading ngay lập tức để tránh "nháy" câu cũ
     setIsLoading(true);
     setIsAnswered(false);
     
@@ -77,23 +76,28 @@ const PracticeTab = () => {
     } catch (error) {
       console.error("Failed to generate question:", error);
       // Nếu lỗi, tự động chuyển sang câu tiếp theo để tránh bị kẹt
-      setPointer(p => (p + 1));
+      setPointer(p => p + 1);
     } finally {
       setIsLoading(false);
     }
   }, [sentenceData, selectedModel]);
 
 
-  // useEffect này chỉ để khởi tạo và tải câu hỏi đầu tiên
+  // useEffect này chỉ để khởi tạo bộ bài và tải câu hỏi đầu tiên
   useEffect(() => {
     if (sentenceData.length > 0) {
       const initialDeck = shuffleArray(Array.from(Array(sentenceData.length).keys()));
       setDeck(initialDeck);
-      setPointer(0);
-      fetchQuestionForPointer(0, initialDeck);
+      setPointer(0); // Set pointer để kích hoạt useEffect tiếp theo
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sentenceData]); // Chỉ chạy khi có dữ liệu câu mới
+  }, [sentenceData]);
+
+  // useEffect này chỉ lắng nghe sự thay đổi của con trỏ để tải câu hỏi
+  useEffect(() => {
+    if (pointer !== -1 && deck.length > 0) {
+        fetchQuestionForPointer(pointer, deck);
+    }
+  }, [pointer, deck, fetchQuestionForPointer]);
 
   const handleAnswerSelect = (answer) => {
     if (isAnswered) return;
@@ -119,17 +123,15 @@ const PracticeTab = () => {
     });
 
     let nextPointer = pointer + 1;
-    let currentDeck = deck;
 
     // Nếu đã rút hết "bài", xáo lại và bắt đầu vòng mới
     if (nextPointer >= deck.length) {
       nextPointer = 0;
-      currentDeck = shuffleArray(deck);
-      setDeck(currentDeck);
+      setDeck(shuffleArray(deck));
     }
     
+    // Chỉ cần cập nhật con trỏ, useEffect sẽ lo phần còn lại
     setPointer(nextPointer);
-    fetchQuestionForPointer(nextPointer, currentDeck);
   };
   
   if (isLoading) {
