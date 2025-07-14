@@ -6,13 +6,17 @@ import Feedback from './Feedback';
 import Button from '../common/Button';
 import './PracticeTab.css';
 
-const createQuestionPrompt = (sentence) => {
+// Prompt được nâng cấp để nhận danh sách từ cần loại trừ
+const createQuestionPrompt = (sentence, wordsToExclude) => {
+  const excludeList = wordsToExclude.length > 0 ? `Do NOT choose any of the following words as the answer: [${wordsToExclude.join(', ')}].` : '';
+
   return `Given the English sentence: "${sentence}".
-Your task is to create a challenging fill-in-the-blank question for an English learner.
-1. Analyze the sentence and choose a single, meaningful word to be the blanked-out answer. The word must be at least 3 characters long.
-2. Create three incorrect but plausible distractor words. They should be the same grammatical type as the correct answer.
-3. Provide a concise grammar explanation in Vietnamese for why the correct word is the right choice in this context.
-4. Provide the full Vietnamese translation of the sentence.
+Your task is to create a challenging fill-in-the-blank question.
+1. Choose a single, meaningful word to be the blanked-out answer. The word must be at least 3 characters long.
+2. ${excludeList} If all meaningful words are in the exclusion list, you can ignore this rule for this time only.
+3. Create three incorrect but plausible distractor words of the same grammatical type.
+4. Provide a concise grammar explanation in Vietnamese.
+5. Provide the full Vietnamese translation of the sentence.
 
 Return the result ONLY as a single, raw JSON object with the following structure. Do not include any extra text or markdown formatting.
 {
@@ -24,70 +28,83 @@ Return the result ONLY as a single, raw JSON object with the following structure
 }`;
 };
 
+const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
+
 const PracticeTab = () => {
-  const { sentences, selectedModel } = useContext(AppContext);
+  const { sentenceData, setSentenceData, selectedModel } = useContext(AppContext);
   
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
 
+  // State mới cho logic vòng chơi
+  const [shuffledQueue, setShuffledQueue] = useState([]);
+  const [pointer, setPointer] = useState(0);
+
+  // Khởi tạo vòng chơi đầu tiên
+  useEffect(() => {
+    if (sentenceData.length > 0) {
+      const initialIndices = Array.from(Array(sentenceData.length).keys());
+      setShuffledQueue(shuffleArray(initialIndices));
+      setPointer(0);
+    }
+  }, [sentenceData]);
+
   const pickAndProcessNextQuestion = useCallback(async () => {
-    if (sentences.length === 0) return;
+    if (shuffledQueue.length === 0) return;
 
     setIsLoading(true);
     setIsAnswered(false);
     setSelectedAnswer(null);
-    setCurrentQuestion(null);
+
+    let currentPointer = pointer;
+    // Nếu hết vòng, xáo trộn lại và bắt đầu vòng mới
+    if (currentPointer >= shuffledQueue.length) {
+        currentPointer = 0;
+        setShuffledQueue(shuffleArray(shuffledQueue));
+    }
+
+    const sentenceIndex = shuffledQueue[currentPointer];
+    const sentenceObject = sentenceData.find(s => s.originalIndex === sentenceIndex);
+
+    if (!sentenceObject) {
+        setIsLoading(false);
+        return;
+    }
 
     try {
-      const randomIndex = Math.floor(Math.random() * sentences.length);
-      const sentenceToProcess = sentences[randomIndex];
-      const prompt = createQuestionPrompt(sentenceToProcess);
+      const prompt = createQuestionPrompt(sentenceObject.originalText, sentenceObject.usedWords);
       const result = await callOpenRouterAPI(prompt, selectedModel);
       
       const jsonString = result.match(/{[\s\S]*}/);
-      if (jsonString) {
-        let questionData = JSON.parse(jsonString[0]);
+      const questionData = JSON.parse(jsonString[0]);
 
-        // =================================================================
-        // == BƯỚC KIỂM TRA VÀ TỰ SỬA LỖI (SELF-CORRECTION LOGIC) ==
-        // =================================================================
-        // Đảm bảo các giá trị cần thiết tồn tại
-        if (!questionData.options || !questionData.correct_answer) {
-          throw new Error("AI response is missing 'options' or 'correct_answer'.");
-        }
-
-        const correctAnswerLower = questionData.correct_answer.toLowerCase();
-        const optionsLower = questionData.options.map(opt => opt.toLowerCase());
-
-        // Kiểm tra xem câu trả lời đúng có trong các lựa chọn không
-        if (!optionsLower.includes(correctAnswerLower)) {
-          console.warn("AI Error: Correct answer was not in options. Forcing it in.");
-          // Thay thế lựa chọn đầu tiên bằng câu trả lời đúng để đảm bảo nó tồn tại
+      // Kiểm tra và tự sửa lỗi
+      const correctAnswerLower = questionData.correct_answer.toLowerCase();
+      if (!questionData.options.map(o => o.toLowerCase()).includes(correctAnswerLower)) {
           questionData.options[0] = questionData.correct_answer;
-        }
-        
-        // Luôn xáo trộn các đáp án sau khi đã đảm bảo câu trả lời đúng có trong đó
-        questionData.options = questionData.options.sort(() => Math.random() - 0.5);
-        // =================================================================
-        
-        setCurrentQuestion(questionData);
-      } else {
-        throw new Error("Failed to parse JSON from AI response.");
       }
+      questionData.options = shuffleArray(questionData.options);
+      
+      // Thêm originalIndex vào để biết câu hỏi này thuộc về câu gốc nào
+      questionData.originalIndex = sentenceIndex; 
+      setCurrentQuestion(questionData);
+
     } catch (error) {
-      console.error("Failed to generate next question:", error);
-      // Nếu có lỗi, thử lại với câu hỏi khác
-      pickAndProcessNextQuestion();
+      console.error("Failed to generate question:", error);
     } finally {
       setIsLoading(false);
+      setPointer(currentPointer + 1); // Cập nhật con trỏ cho lần tiếp theo
     }
-  }, [sentences, selectedModel]);
+  }, [pointer, shuffledQueue, sentenceData, selectedModel]);
 
+  // Tải câu hỏi đầu tiên hoặc khi vòng chơi được reset
   useEffect(() => {
-    pickAndProcessNextQuestion();
-  }, [pickAndProcessNextQuestion]);
+    if (shuffledQueue.length > 0) {
+      pickAndProcessNextQuestion();
+    }
+  }, [shuffledQueue]); // Chỉ chạy khi bộ bài được tạo
 
   const handleAnswerSelect = (answer) => {
     if (isAnswered) return;
@@ -96,6 +113,25 @@ const PracticeTab = () => {
   };
   
   const handleNextQuestion = () => {
+    // Cập nhật "bộ nhớ" của câu vừa trả lời
+    const answerToRemember = currentQuestion.correct_answer.toLowerCase();
+    setSentenceData(prevData => {
+        return prevData.map(s => {
+            if (s.originalIndex === currentQuestion.originalIndex) {
+                // Thêm từ vừa học vào bộ nhớ, không trùng lặp
+                const newUsedWords = [...new Set([...s.usedWords, answerToRemember])];
+                // Nếu đã che hết các từ, xóa bộ nhớ để bắt đầu lại
+                const allWords = s.originalText.split(' ').filter(w => w.length >= 3);
+                if (newUsedWords.length >= allWords.length) {
+                    return { ...s, usedWords: [] };
+                }
+                return { ...s, usedWords: newUsedWords };
+            }
+            return s;
+        });
+    });
+
+    // Tải câu hỏi tiếp theo
     pickAndProcessNextQuestion();
   };
   
@@ -109,16 +145,12 @@ const PracticeTab = () => {
   }
 
   if (!currentQuestion) {
-    return (
-      <div className="processing-container">
-        <p>Could not load a question.</p>
-        <Button onClick={handleNextQuestion}>Try Again</Button>
-      </div>
-    );
+    return <p>Could not load a question. Please try again.</p>;
   }
   
   return (
     <div className="practice-tab-container">
+      {/* Các component con giữ nguyên */}
       <Question 
         question={{
             question: currentQuestion.question_sentence,

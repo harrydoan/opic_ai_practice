@@ -4,15 +4,16 @@ export const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
   const [activeTab, setActiveTab] = useState('Nhập liệu');
-  const [sentences, setSentences] = useState([]);
+  // Thay thế `sentences` bằng `sentenceData` với cấu trúc mới
+  const [sentenceData, setSentenceData] = useState([]);
   const [selectedModel, setSelectedModel] = useState('openai/gpt-4o-mini');
-  const [opicText, setOpicText] = useState(''); // <-- STATE MỚI ĐỂ LƯU VĂN BẢN
+  const [opicText, setOpicText] = useState('');
 
   const value = {
     activeTab, setActiveTab,
-    sentences, setSentences,
+    sentenceData, setSentenceData, // <-- Thay đổi ở đây
     selectedModel, setSelectedModel,
-    opicText, setOpicText, // <-- THÊM VÀO CONTEXT
+    opicText, setOpicText,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
