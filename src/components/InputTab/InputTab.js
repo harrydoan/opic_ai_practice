@@ -4,7 +4,6 @@ import { callOpenRouterAPI } from '../../api/openRouterAPI';
 import Button from '../common/Button';
 import './InputTab.css';
 
-// Hàm dọn dẹp văn bản trả về từ AI
 const cleanOpicResponse = (rawText) => {
   if (!rawText) return '';
 
@@ -30,15 +29,15 @@ const cleanOpicResponse = (rawText) => {
 const InputTab = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { 
-    setSentences, 
+    // ===================================================
+    // == LỖI Ở ĐÂY - THÊM `setSentenceData` VÀO DANH SÁCH ==
+    // ===================================================
+    setSentenceData, 
     selectedModel, setSelectedModel, 
     setActiveTab,
     opicText, setOpicText
   } = useContext(AppContext);
 
-  // ===================================================
-  // == HÀM BỊ THIẾU ĐÃ ĐƯỢC THÊM LẠI VÀO ĐÂY ==
-  // ===================================================
   const handleFetchData = async () => {
     setIsLoading(true);
     const OPIC_PROMPT = `Act as an OPIC test expert. Your task is to provide one random question and a corresponding sample answer for the AL (Advanced Low) level.
@@ -58,8 +57,7 @@ Now, generate a new, random question and answer following this format exactly.`;
     
     setIsLoading(false);
   };
-  // ===================================================
-
+  
   const handleProcessText = () => {
     const extractedSentences = opicText
       .split(/[.!?]+/)
