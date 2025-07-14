@@ -29,24 +29,27 @@ const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
 
 const PracticeTab = () => {
   const { sentenceData, setSentenceData, selectedModel } = useContext(AppContext);
-  
+
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
 
-  // State cho logic "Bộ bài"
-  const [deck, setDeck] = useState([]); // "Bộ bài" đã xáo trộn chứa các chỉ số (index)
-  const [pointer, setPointer] = useState(0); // Vị trí "lá bài" đang rút
+  // Thêm biến lưu chỉ số câu vừa hỏi
+  const [lastQuestionIndex, setLastQuestionIndex] = useState(null);
 
-  // Hàm fetch câu hỏi, được gọi một cách tường minh
+  const [deck, setDeck] = useState([]);
+  const [pointer, setPointer] = useState(0);
+
   const fetchQuestion = useCallback(async (currentDeck, currentPointer) => {
     if (!currentDeck || currentDeck.length === 0) return;
-    
+
     setIsLoading(true);
     setIsAnswered(false);
-    
+
     const sentenceIndex = currentDeck[currentPointer];
+    setLastQuestionIndex(sentenceIndex); // Lưu lại chỉ số câu vừa hỏi
+
     const sentenceObject = sentenceData.find(s => s.originalIndex === sentenceIndex);
 
     if (!sentenceObject) {
@@ -63,11 +66,11 @@ const PracticeTab = () => {
 
       const correctAnswerLower = questionData.correct_answer.toLowerCase();
       if (!questionData.options.map(o => o.toLowerCase()).includes(correctAnswerLower)) {
-          questionData.options[0] = questionData.correct_answer;
+        questionData.options[0] = questionData.correct_answer;
       }
       questionData.options = shuffleArray(questionData.options);
       questionData.originalIndex = sentenceIndex;
-      
+
       setCurrentQuestion(questionData);
     } catch (error) {
       console.error("Failed to generate question:", error);
@@ -76,11 +79,13 @@ const PracticeTab = () => {
     }
   }, [sentenceData, selectedModel]);
 
-
-  // useEffect này chỉ để khởi tạo vòng chơi đầu tiên
   useEffect(() => {
     if (sentenceData.length > 0) {
-      const initialDeck = shuffleArray(Array.from(Array(sentenceData.length).keys()));
+      let initialDeck = shuffleArray(Array.from(Array(sentenceData.length).keys()));
+      // Nếu có lastQuestionIndex, loại bỏ nó khỏi deck đầu tiên (nếu có nhiều hơn 1 câu)
+      if (lastQuestionIndex !== null && initialDeck.length > 1) {
+        initialDeck = initialDeck.filter(idx => idx !== lastQuestionIndex);
+      }
       setDeck(initialDeck);
       setPointer(0);
       fetchQuestion(initialDeck, 0);
@@ -93,39 +98,42 @@ const PracticeTab = () => {
     setIsAnswered(true);
     setSelectedAnswer(answer);
   };
-  
+
   const handleNextQuestion = () => {
     // Cập nhật "bộ nhớ" của câu vừa trả lời
     const answerToRemember = currentQuestion.correct_answer.toLowerCase();
     setSentenceData(prevData => {
-        return prevData.map(s => {
-            if (s.originalIndex === currentQuestion.originalIndex) {
-                const newUsedWords = [...new Set([...s.usedWords, answerToRemember])];
-                const allWords = s.originalText.split(' ').filter(w => w.length >= 3);
-                if (newUsedWords.length >= allWords.length) {
-                    return { ...s, usedWords: [] };
-                }
-                return { ...s, usedWords: newUsedWords };
-            }
-            return s;
-        });
+      return prevData.map(s => {
+        if (s.originalIndex === currentQuestion.originalIndex) {
+          const newUsedWords = [...new Set([...s.usedWords, answerToRemember])];
+          const allWords = s.originalText.split(' ').filter(w => w.length >= 3);
+          if (newUsedWords.length >= allWords.length) {
+            return { ...s, usedWords: [] };
+          }
+          return { ...s, usedWords: newUsedWords };
+        }
+        return s;
+      });
     });
 
     let nextPointer = pointer + 1;
     let currentDeck = deck;
 
-    // Nếu đã rút hết "bài", xáo lại và bắt đầu vòng mới
+    // Nếu đã rút hết "bài", xáo lại deck và loại bỏ câu vừa hỏi nếu có nhiều hơn 1 câu
     if (nextPointer >= deck.length) {
-      nextPointer = 0;
-      currentDeck = shuffleArray(deck);
+      let newDeck = shuffleArray(deck);
+      if (lastQuestionIndex !== null && newDeck.length > 1) {
+        newDeck = newDeck.filter(idx => idx !== lastQuestionIndex);
+      }
+      currentDeck = newDeck;
       setDeck(currentDeck);
+      nextPointer = 0;
     }
-    
+
     setPointer(nextPointer);
-    // Gọi hàm fetch một cách trực tiếp thay vì dựa vào useEffect
     fetchQuestion(currentDeck, nextPointer);
   };
-  
+
   if (isLoading) {
     return (
       <div className="processing-container">
@@ -137,14 +145,14 @@ const PracticeTab = () => {
   if (!currentQuestion) {
     return <p>Không có câu hỏi nào để hiển thị. Vui lòng kiểm tra lại tab 'Nhập liệu'.</p>;
   }
-  
+
   return (
     <div className="practice-tab-container">
-      <Question 
+      <Question
         question={{
-            question: currentQuestion.question_sentence,
-            options: currentQuestion.options,
-            correctAnswer: currentQuestion.correct_answer,
+          question: currentQuestion.question_sentence,
+          options: currentQuestion.options,
+          correctAnswer: currentQuestion.correct_answer,
         }}
         onAnswerSelect={handleAnswerSelect}
         selectedAnswer={selectedAnswer}
@@ -152,12 +160,12 @@ const PracticeTab = () => {
       />
       {isAnswered && (
         <div className="feedback-and-next">
-          <Feedback 
+          <Feedback
             isCorrect={selectedAnswer.toLowerCase() === currentQuestion.correct_answer.toLowerCase()}
             question={{
-                explanation: `Đáp án đúng là "${currentQuestion.correct_answer}".`,
-                grammar: currentQuestion.grammar_explanation,
-                translation: currentQuestion.translation,
+              explanation: `Đáp án đúng là "${currentQuestion.correct_answer}".`,
+              grammar: currentQuestion.grammar_explanation,
+              translation: currentQuestion.translation,
             }}
             isLoading={false}
           />
