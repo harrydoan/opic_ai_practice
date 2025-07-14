@@ -35,12 +35,13 @@ const PracticeTab = () => {
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
 
-  // Thêm biến lưu chỉ số câu vừa hỏi
+  // Biến lưu chỉ số câu vừa hỏi
   const [lastQuestionIndex, setLastQuestionIndex] = useState(null);
 
   const [deck, setDeck] = useState([]);
   const [pointer, setPointer] = useState(0);
 
+  // Lấy câu hỏi mới từ AI
   const fetchQuestion = useCallback(async (currentDeck, currentPointer) => {
     if (!currentDeck || currentDeck.length === 0) return;
 
@@ -48,7 +49,7 @@ const PracticeTab = () => {
     setIsAnswered(false);
 
     const sentenceIndex = currentDeck[currentPointer];
-    setLastQuestionIndex(sentenceIndex); // Lưu lại chỉ số câu vừa hỏi
+    setLastQuestionIndex(sentenceIndex);
 
     const sentenceObject = sentenceData.find(s => s.originalIndex === sentenceIndex);
 
@@ -79,10 +80,10 @@ const PracticeTab = () => {
     }
   }, [sentenceData, selectedModel]);
 
+  // Khởi tạo deck ngẫu nhiên, loại bỏ câu vừa hỏi nếu có nhiều hơn 1 câu
   useEffect(() => {
     if (sentenceData.length > 0) {
       let initialDeck = shuffleArray(Array.from(Array(sentenceData.length).keys()));
-      // Nếu có lastQuestionIndex, loại bỏ nó khỏi deck đầu tiên (nếu có nhiều hơn 1 câu)
       if (lastQuestionIndex !== null && initialDeck.length > 1) {
         initialDeck = initialDeck.filter(idx => idx !== lastQuestionIndex);
       }
@@ -99,8 +100,8 @@ const PracticeTab = () => {
     setSelectedAnswer(answer);
   };
 
+  // Chuyển sang câu hỏi tiếp theo, đảm bảo không lặp lại câu vừa hỏi
   const handleNextQuestion = () => {
-    // Cập nhật "bộ nhớ" của câu vừa trả lời
     const answerToRemember = currentQuestion.correct_answer.toLowerCase();
     setSentenceData(prevData => {
       return prevData.map(s => {
@@ -119,9 +120,9 @@ const PracticeTab = () => {
     let nextPointer = pointer + 1;
     let currentDeck = deck;
 
-    // Nếu đã rút hết "bài", xáo lại deck và loại bỏ câu vừa hỏi nếu có nhiều hơn 1 câu
+    // Nếu đã hết deck, tạo deck mới ngẫu nhiên và loại bỏ câu vừa hỏi nếu có nhiều hơn 1 câu
     if (nextPointer >= deck.length) {
-      let newDeck = shuffleArray(deck);
+      let newDeck = shuffleArray(Array.from(Array(sentenceData.length).keys()));
       if (lastQuestionIndex !== null && newDeck.length > 1) {
         newDeck = newDeck.filter(idx => idx !== lastQuestionIndex);
       }
