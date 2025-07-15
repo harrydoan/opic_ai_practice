@@ -6,30 +6,51 @@ import Feedback from './Feedback';
 import Button from '../common/Button';
 import './PracticeTab.css';
 
-// Prompt để yêu cầu AI tạo câu hỏi hoàn chỉnh
 const createQuestionPrompt = (sentence) => {
-  return `Given the sentence: "${sentence}"
+  return `Given the sentence: "${sentence}".
+Your task is to create a challenging fill-in-the-blank question.
+1. Analyze the sentence and choose a single, meaningful word to be the blanked-out answer.
+2. Create three incorrect but plausible distractor words of the same grammatical type.
+3. Provide a concise grammar explanation in Vietnamese.
+4. Provide the full Vietnamese translation of the sentence.
 
-1. Randomly hide one word using a blank (____).
-2. Provide four multiple choice options (A, B, C, D), with only one correct answer (the original word). The other three options should be plausible but incorrect.
-3. Then, explain the grammar of the missing word in Vietnamese (its part of speech, role in the sentence, and position).
-4. Translate the full original sentence into Vietnamese.
-Do not include any explanations or extra text beyond the requested content.`;
+Return the result ONLY as a single, raw JSON object with the following structure. Do not include any extra text, markdown formatting like \`\`\`json, or explanations outside of the JSON object itself.
+{
+  "question_sentence": "The sentence with '_____' in place of the correct word.",
+  "options": ["correct_word", "distractor1", "distractor2", "distractor3"],
+  "correct_answer": "the_correct_word_in_lowercase",
+  "grammar_explanation": "Your Vietnamese grammar explanation here.",
+  "translation": "Your Vietnamese translation here."
+}`;
 };
 
-// Hàm phân tích JSON đáng tin cậy
+// ========================================================================
+// == HÀM PHÂN TÍCH MỚI, CÓ KHẢ NĂNG XỬ LÝ MARKDOWN ==
+// ========================================================================
 const parseAIResponse = (rawText) => {
   try {
-    const jsonMatch = rawText.match(/{[\s\S]*}/);
+    let textToParse = rawText;
+
+    // Cố gắng tìm và trích xuất nội dung từ khối mã markdown (```json ... ```)
+    const markdownMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (markdownMatch && markdownMatch[1]) {
+      textToParse = markdownMatch[1];
+    }
+
+    // Tìm khối JSON đầu tiên trong chuỗi đã được xử lý
+    const jsonMatch = textToParse.match(/{[\s\S]*}/);
     if (jsonMatch) {
       return JSON.parse(jsonMatch[0]);
     }
+    
+    console.error("Parser failed: No valid JSON object found in AI response.", rawText);
     return null;
   } catch (error) {
-    console.error("JSON parsing error:", error);
+    console.error("JSON parsing error:", error, "Raw text:", rawText);
     return null;
   }
 };
+
 
 const PracticeTab = () => {
   const { sentenceData, selectedModel } = useContext(AppContext);
@@ -40,8 +61,7 @@ const PracticeTab = () => {
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [error, setError] = useState(null);
 
-  // Logic cốt lõi: Lấy một câu ngẫu nhiên và xử lý
-  const fetchRandomQuestion = useCallback(async () => {
+  const fetchAndProcessQuestion = useCallback(async (retryCount = 3) => {
     if (sentenceData.length === 0) {
       setIsLoading(false);
       return;
@@ -52,41 +72,45 @@ const PracticeTab = () => {
     setError(null);
     
     try {
-      // BƯỚC 1: CHỌN NGẪU NHIÊN MỘT CÂU
       const randomIndex = Math.floor(Math.random() * sentenceData.length);
       const sentenceObject = sentenceData[randomIndex];
       
-      // BƯỚC 2: GỬI ĐI XỬ LÝ
       const prompt = createQuestionPrompt(sentenceObject.originalText);
       const rawResponse = await callOpenRouterAPI(prompt, selectedModel);
+      
       const questionData = parseAIResponse(rawResponse);
       
-      if (questionData) {
-        // Tự sửa lỗi và xáo trộn đáp án
+      if (questionData && questionData.options && questionData.correct_answer) {
         const correctAnswerLower = questionData.correct_answer.toLowerCase();
         if (!questionData.options.map(o => o.toLowerCase()).includes(correctAnswerLower)) {
             questionData.options[0] = questionData.correct_answer;
         }
         questionData.options = questionData.options.sort(() => Math.random() - 0.5);
         
-        // BƯỚC 3: HIỂN THỊ
         setCurrentQuestion(questionData);
       } else {
-        throw new Error("AI did not return valid JSON.");
+        throw new Error("AI did not return valid JSON, even after parsing.");
       }
 
     } catch (err) {
-      console.error("Error fetching question:", err);
-      setError(err.message);
+      console.error(`Error fetching/parsing question (attempt ${4 - retryCount}):`, err);
+      if (retryCount > 1) {
+        // Tự động thử lại với một câu khác nếu có lỗi
+        setTimeout(() => fetchAndProcessQuestion(retryCount - 1), 500);
+      } else {
+        setError("AI is not responding correctly. Please try again later.");
+        setIsLoading(false);
+      }
     } finally {
-      setIsLoading(false);
+      if (retryCount <= 1) {
+        setIsLoading(false);
+      }
     }
   }, [sentenceData, selectedModel]);
 
-  // Chỉ gọi một lần lúc đầu
   useEffect(() => {
-    fetchRandomQuestion();
-  }, [fetchRandomQuestion]);
+    fetchAndProcessQuestion();
+  }, [fetchAndProcessQuestion]);
 
   const handleAnswerSelect = (answer) => {
     if (isAnswered) return;
@@ -94,9 +118,8 @@ const PracticeTab = () => {
     setSelectedAnswer(answer);
   };
   
-  // Khi nhấn Next, chỉ cần gọi lại hàm để lấy một câu ngẫu nhiên mới
   const handleNextQuestion = () => {
-    fetchRandomQuestion();
+    fetchAndProcessQuestion();
   };
   
   if (isLoading) {
