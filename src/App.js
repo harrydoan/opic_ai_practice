@@ -30,3 +30,4 @@ function App() {
 }
 
 export default App;
+//git add . && git commit -m "Cập nhật logic Tab Sắp xếp và Luyện tập" && git push
