@@ -34,9 +34,8 @@
 .ordering-options-grid {
   display: flex;
   justify-content: center;
-  align-items: center;
   flex-wrap: wrap;
-  gap: 18px;
+  gap: 12px;
   margin: 18px 0;
 }
 
@@ -61,3 +60,4 @@
 .ordering-feedback.error { color: #dc3545; margin-top: 12px; }
 
 .completion-message h2 { color: #4facfe; }
+
