@@ -65,23 +65,23 @@ const OrderingTab = () => {
     };
 
     if (sentenceData.length === 0) {
-        return <div className="practice-tab-container"><p>Không có dữ liệu. Vui lòng xử lý văn bản ở tab "Nhập liệu".</p></div>;
+        return <div className="ordering-tab-container"><p>Không có dữ liệu. Vui lòng xử lý văn bản ở tab "Nhập liệu".</p></div>;
     }
 
     const currentSentence = sentenceData[deck[currentIndex]]?.originalText;
     const correctPosition = deck[currentIndex] + 1;
 
     return (
-        <div className="practice-tab-container">
-            <div className="practice-card">
-                <div className="practice-progress">
+        <div className="ordering-tab-container">
+            <div className="ordering-card">
+                <div className="ordering-progress">
                     <span style={{ color: "#4facfe", fontWeight: "bold" }}>Sắp xếp câu</span>
                 </div>
                 <h3>❓ Câu này ở vị trí thứ mấy trong đoạn văn?</h3>
-                <div className="practice-question">{currentSentence}</div>
-                <div className="practice-options">
+                <div className="ordering-sentence">{currentSentence}</div>
+                <div className="ordering-options-grid">
                     {options.map(option => {
-                        let btnClass = 'practice-btn';
+                        let btnClass = 'ordering-btn';
                         if (isAnswered) {
                             if (option === correctPosition) btnClass += ' correct';
                             else if (option === selectedAnswer) btnClass += ' incorrect';
@@ -101,7 +101,7 @@ const OrderingTab = () => {
                     })}
                 </div>
                 {isAnswered && (
-                    <div className={`practice-feedback ${selectedAnswer === correctPosition ? 'success' : 'error'}`}>
+                    <div className={`ordering-feedback ${selectedAnswer === correctPosition ? 'success' : 'error'}`}>
                         <h4>{selectedAnswer === correctPosition ? '✅ Chính xác!' : '❌ Sai rồi!'}</h4>
                         <p>Câu này đứng ở vị trí thứ <strong>{correctPosition}</strong>.</p>
                         <Button onClick={handleNextQuestion} style={{ marginTop: 16 }}>
