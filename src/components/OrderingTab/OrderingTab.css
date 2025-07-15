@@ -32,10 +32,10 @@
 }
 
 .ordering-options-grid {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(80px, 1fr));
+  gap: 18px;
   justify-content: center;
-  flex-wrap: wrap;
-  gap: 12px;
   margin: 18px 0;
 }
 
