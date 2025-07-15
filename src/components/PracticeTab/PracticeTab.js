@@ -27,7 +27,8 @@ const parseAIResponse = (rawText, originalSentence) => {
   let grammar_explanation = '';
   let translation = '';
 
-  const optionRegex = /^[A-D][\.\)]\s(.+)/i;
+  // === DÒNG ĐÃ SỬA LỖI ===
+  const optionRegex = /^[A-D][.)]\s(.+)/i; // Xóa dấu \ trước . và )
 
   for (const line of lines) {
     const trimmedLine = line.trim();
@@ -92,8 +93,7 @@ const parseAIResponse = (rawText, originalSentence) => {
 };
 
 const PracticeTab = () => {
-  const { sentenceData, selectedModel } = useContext(AppContext);
-  
+  const { sentenceData, setSentenceData, selectedModel } = useContext(AppContext);
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAnswered, setIsAnswered] = useState(false);
