@@ -6,140 +6,117 @@ import Feedback from './Feedback';
 import Button from '../common/Button';
 import './PracticeTab.css';
 
-const createQuestionPrompt = (sentence, wordsToExclude) => {
-  const excludeList = wordsToExclude.length > 0 ? `Do NOT choose any of the following words as the answer: [${wordsToExclude.join(', ')}].` : '';
-  return `Given the English sentence: "${sentence}".
-Your task is to create a challenging fill-in-the-blank question.
-1. Choose a single, meaningful word to be the blanked-out answer. The word must be at least 3 characters long.
-2. ${excludeList} If all meaningful words are in the exclusion list, you can ignore this rule for this time only.
-3. Create three incorrect but plausible distractor words of the same grammatical type.
-4. Provide a concise grammar explanation in Vietnamese.
-5. Provide the full Vietnamese translation of the sentence.
-Return the result ONLY as a single, raw JSON object with the following structure. Do not include any extra text or markdown formatting.
-{
-  "question_sentence": "The sentence with '_____' in place of the correct word.",
-  "options": ["correct_word", "distractor1", "distractor2", "distractor3"],
-  "correct_answer": "the_correct_word_in_lowercase",
-  "grammar_explanation": "Your Vietnamese grammar explanation here.",
-  "translation": "Your Vietnamese translation here."
-}`;
+// Hàm tạo prompt mới theo yêu cầu của bạn
+const createNewPrompt = (sentence) => {
+  // Thay thế câu ví dụ bằng câu thực tế
+  return `Given the sentence: "${sentence}"
+
+1. Randomly hide one word using a blank (____).
+2. Provide four multiple choice options (A, B, C, D), with only one correct answer (the original word). The other three options should be plausible but incorrect.
+3. Then, explain the grammar of the missing word in Vietnamese (its part of speech, role in the sentence, and position).
+4. Translate the full original sentence into Vietnamese.
+Do not include any explanations or extra text beyond the requested content.`;
 };
 
-const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
+// HÀM MỚI: Phân tích văn bản thô trả về từ AI
+const parseAIResponse = (rawText, originalSentence) => {
+  const lines = rawText.split('\n').filter(line => line.trim() !== '');
+
+  const question_sentence = lines[0] || '';
+  
+  const options = [];
+  const optionLines = lines.slice(1, 5);
+  const optionRegex = /^[A-D]\.\s(.+)/;
+  for (const line of optionLines) {
+    const match = line.match(optionRegex);
+    if (match) {
+      options.push(match[1].trim());
+    }
+  }
+
+  // Suy luận đáp án đúng bằng cách thử điền các lựa chọn vào chỗ trống
+  let correct_answer = '';
+  for (const option of options) {
+    if (question_sentence.replace('____', option) === originalSentence) {
+      correct_answer = option;
+      break;
+    }
+  }
+  
+  // Nếu không suy luận được (do AI che từ có dấu câu), lấy đáp án là từ bị thiếu
+  if (!correct_answer) {
+      const originalWords = originalSentence.split(' ');
+      const questionWords = question_sentence.replace('____', 'PLACEHOLDER').split(' ');
+      const missingWord = originalWords.find(word => !questionWords.includes(word));
+      if (missingWord) correct_answer = missingWord.replace(/[.,]/g, '');
+  }
+
+  const grammar_explanation = lines.find(line => line.toLowerCase().includes('ngữ pháp:'))?.substring(9).trim() || lines[5] || '';
+  const translation = lines.find(line => line.toLowerCase().includes('dịch:'))?.substring(5).trim() || lines[6] || '';
+
+  return {
+    question_sentence,
+    options: options.sort(() => Math.random() - 0.5), // Luôn xáo trộn đáp án
+    correct_answer: correct_answer.toLowerCase(),
+    grammar_explanation,
+    translation,
+  };
+};
 
 const PracticeTab = () => {
-  const { sentenceData, setSentenceData, selectedModel, userDefinedOrder } = useContext(AppContext);
-
+  const { sentenceData, selectedModel } = useContext(AppContext);
+  
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
 
-  const [deck, setDeck] = useState([]);
-  const [pointer, setPointer] = useState(-1);
-  const [lastIndex, setLastIndex] = useState(null);
-
-  // Lấy câu hỏi mới từ AI
-  const fetchQuestionForPointer = useCallback(async (targetPointer, currentDeck) => {
-    if (!currentDeck || currentDeck.length === 0 || targetPointer < 0) {
+  const fetchAndProcessQuestion = useCallback(async () => {
+    if (sentenceData.length === 0) {
       setIsLoading(false);
-      setCurrentQuestion(null);
       return;
     }
 
     setIsLoading(true);
     setIsAnswered(false);
-
-    const sentenceIndex = currentDeck[targetPointer];
-    setLastIndex(sentenceIndex);
-
-    const sentenceObject = sentenceData.find(s => s.originalIndex === sentenceIndex);
-
-    if (!sentenceObject) {
-      setIsLoading(false);
-      setCurrentQuestion(null);
-      return;
-    }
-
+    
     try {
-      const prompt = createQuestionPrompt(sentenceObject.originalText, sentenceObject.usedWords);
-      const result = await callOpenRouterAPI(prompt, selectedModel);
-      const jsonString = result.match(/{[\s\S]*}/);
-      let questionData = JSON.parse(jsonString[0]);
+      // 1. Chọn ngẫu nhiên một câu văn gốc
+      const randomIndex = Math.floor(Math.random() * sentenceData.length);
+      const sentenceObject = sentenceData[randomIndex];
+      const originalSentence = sentenceObject.originalText;
 
-      const correctAnswerLower = questionData.correct_answer.toLowerCase();
-      if (!questionData.options.map(o => o.toLowerCase()).includes(correctAnswerLower)) {
-        questionData.options[0] = questionData.correct_answer;
-      }
-      questionData.options = shuffleArray(questionData.options);
-      questionData.originalIndex = sentenceIndex;
-
+      // 2. Gửi prompt mới đến AI
+      const prompt = createNewPrompt(originalSentence);
+      const rawResponse = await callOpenRouterAPI(prompt, selectedModel);
+      
+      // 3. Phân tích văn bản thô và tạo đối tượng câu hỏi
+      const questionData = parseAIResponse(rawResponse, originalSentence);
+      
       setCurrentQuestion(questionData);
     } catch (error) {
-      setCurrentQuestion(null);
+      console.error("Failed to process question:", error);
     } finally {
       setIsLoading(false);
     }
   }, [sentenceData, selectedModel]);
 
-  // Khởi tạo deck ngẫu nhiên, loại bỏ câu vừa hỏi nếu có nhiều hơn 1 câu
+  // Tải câu hỏi đầu tiên
   useEffect(() => {
-    if (sentenceData.length > 0) {
-      let initialDeck = userDefinedOrder
-        ? userDefinedOrder
-        : shuffleArray(Array.from(Array(sentenceData.length).keys()));
-      if (lastIndex !== null && initialDeck.length > 1) {
-        initialDeck = initialDeck.filter(idx => idx !== lastIndex);
-      }
-      setDeck(initialDeck);
-      setPointer(0);
-      fetchQuestionForPointer(0, initialDeck);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sentenceData, userDefinedOrder]);
-
-  // Khi pointer thay đổi, gửi câu hỏi mới cho AI
-  useEffect(() => {
-    if (pointer !== -1 && deck.length > 0) {
-      fetchQuestionForPointer(pointer, deck);
-    }
-  }, [pointer, deck, fetchQuestionForPointer]);
+    fetchAndProcessQuestion();
+  }, [fetchAndProcessQuestion]);
 
   const handleAnswerSelect = (answer) => {
     if (isAnswered) return;
     setIsAnswered(true);
     setSelectedAnswer(answer);
   };
-
-  // Chuyển sang câu hỏi tiếp theo, xóa usedWords của câu vừa hỏi để lần sau AI chọn lại từ mới
+  
   const handleNextQuestion = () => {
-    if (!currentQuestion) return;
-
-    // Xóa usedWords của câu vừa hỏi
-    setSentenceData(prevData => {
-      return prevData.map(s => {
-        if (s.originalIndex === currentQuestion.originalIndex) {
-          return { ...s, usedWords: [] };
-        }
-        return s;
-      });
-    });
-
-    // Loại bỏ câu vừa hỏi khỏi deck
-    let newDeck = deck.filter(idx => idx !== currentQuestion.originalIndex);
-
-    // Nếu deck hết, tạo lại deck mới (không chứa câu vừa hỏi nếu có nhiều hơn 1 câu)
-    if (newDeck.length === 0) {
-      newDeck = shuffleArray(Array.from(Array(sentenceData.length).keys()))
-        .filter(idx => idx !== currentQuestion.originalIndex);
-    }
-
-    setDeck(newDeck);
-    setPointer(newDeck.length > 0 ? 0 : -1);
-    setSelectedAnswer(null);
-    setIsAnswered(false);
+    // Chỉ cần gọi lại hàm để lấy một câu hỏi ngẫu nhiên mới
+    fetchAndProcessQuestion();
   };
-
+  
   if (isLoading) {
     return (
       <div className="processing-container">
@@ -151,14 +128,14 @@ const PracticeTab = () => {
   if (!currentQuestion) {
     return <p>Không có câu hỏi nào để hiển thị. Vui lòng kiểm tra lại tab 'Nhập liệu'.</p>;
   }
-
+  
   return (
     <div className="practice-tab-container">
-      <Question
+      <Question 
         question={{
-          question: currentQuestion.question_sentence,
-          options: currentQuestion.options,
-          correctAnswer: currentQuestion.correct_answer,
+            question: currentQuestion.question_sentence,
+            options: currentQuestion.options,
+            correctAnswer: currentQuestion.correct_answer,
         }}
         onAnswerSelect={handleAnswerSelect}
         selectedAnswer={selectedAnswer}
@@ -166,12 +143,12 @@ const PracticeTab = () => {
       />
       {isAnswered && (
         <div className="feedback-and-next">
-          <Feedback
+          <Feedback 
             isCorrect={selectedAnswer.toLowerCase() === currentQuestion.correct_answer.toLowerCase()}
             question={{
-              explanation: `Đáp án đúng là "${currentQuestion.correct_answer}".`,
-              grammar: currentQuestion.grammar_explanation,
-              translation: currentQuestion.translation,
+                explanation: `Đáp án đúng là "${currentQuestion.correct_answer}".`,
+                grammar: currentQuestion.grammar_explanation,
+                translation: currentQuestion.translation,
             }}
             isLoading={false}
           />
