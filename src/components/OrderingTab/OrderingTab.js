@@ -7,16 +7,17 @@ const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
 
 const OrderingTab = () => {
     const { sentenceData, setUserDefinedOrder } = useContext(AppContext);
-    
+
     // State cho logic vòng chơi
     const [unansweredIndices, setUnansweredIndices] = useState([]);
     const [currentSentenceIndex, setCurrentSentenceIndex] = useState(null);
     const [options, setOptions] = useState([]);
-    
+
     // State cho giao diện
     const [isAnswered, setIsAnswered] = useState(false);
     const [selectedAnswer, setSelectedAnswer] = useState(null);
     const [correctlyPlacedCount, setCorrectlyPlacedCount] = useState(0);
+    const [showCongrats, setShowCongrats] = useState(false);
 
     // Khởi tạo vòng chơi
     useEffect(() => {
@@ -24,9 +25,10 @@ const OrderingTab = () => {
             const allIndices = Array.from(Array(sentenceData.length).keys());
             setUnansweredIndices(shuffleArray(allIndices));
             setCorrectlyPlacedCount(0);
+            setShowCongrats(false);
         }
     }, [sentenceData]);
-    
+
     // Lấy câu hỏi tiếp theo từ danh sách chưa trả lời
     useEffect(() => {
         if (unansweredIndices.length > 0) {
@@ -34,7 +36,8 @@ const OrderingTab = () => {
         } else if (sentenceData.length > 0) {
             // Hoàn thành xuất sắc!
             const finalOrder = Array.from(Array(sentenceData.length).keys());
-            setUserDefinedOrder(finalOrder); // Lưu lại thứ tự đúng vào context
+            setUserDefinedOrder(finalOrder);
+            setShowCongrats(true);
         }
     }, [unansweredIndices, sentenceData.length, setUserDefinedOrder]);
 
@@ -57,6 +60,17 @@ const OrderingTab = () => {
         generateOptions();
     }, [generateOptions]);
 
+    // Tự động chuyển sang câu tiếp theo sau khi trả lời
+    useEffect(() => {
+        if (isAnswered && unansweredIndices.length > 0) {
+            const timer = setTimeout(() => {
+                handleNextQuestion();
+            }, 1200);
+            return () => clearTimeout(timer);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isAnswered]);
+
     const handleAnswerSelect = (position) => {
         if (isAnswered) return;
         setSelectedAnswer(position);
@@ -69,57 +83,71 @@ const OrderingTab = () => {
     const handleNextQuestion = () => {
         setIsAnswered(false);
         setSelectedAnswer(null);
-        // Loại bỏ câu vừa trả lời khỏi danh sách
         setUnansweredIndices(prev => prev.slice(1));
     };
 
     if (sentenceData.length === 0) {
-        return <p>Không có dữ liệu. Vui lòng xử lý văn bản ở tab "Nhập liệu".</p>;
+        return <div className="ordering-tab-container"><p>Không có dữ liệu. Vui lòng xử lý văn bản ở tab "Nhập liệu".</p></div>;
     }
-    
+
     // Khi đã hoàn thành tất cả
-    if (unansweredIndices.length === 0) {
+    if (showCongrats) {
         return (
             <div className="ordering-tab-container completion-message">
-                <h4>🎉 Chúc mừng!</h4>
-                <p>Bạn đã sắp xếp thành công toàn bộ đoạn văn.</p>
-                <p>Vòng luyện tập tiếp theo sẽ đi theo đúng thứ tự câu chuyện này.</p>
-                <Button onClick={() => {
-                    // Chơi lại từ đầu
-                    const allIndices = Array.from(Array(sentenceData.length).keys());
-                    setUnansweredIndices(shuffleArray(allIndices));
-                    setCorrectlyPlacedCount(0);
-                }}>Chơi lại</Button>
+                <div className="ordering-card">
+                    <h2>🎉 Chúc mừng!</h2>
+                    <p>Bạn đã sắp xếp thành công toàn bộ đoạn văn.</p>
+                    <p>Vòng luyện tập tiếp theo sẽ đi theo đúng thứ tự câu chuyện này.</p>
+                    <Button onClick={() => {
+                        const allIndices = Array.from(Array(sentenceData.length).keys());
+                        setUnansweredIndices(shuffleArray(allIndices));
+                        setCorrectlyPlacedCount(0);
+                        setShowCongrats(false);
+                    }}>Chơi lại</Button>
+                </div>
             </div>
         );
     }
-    
+
     const currentSentence = sentenceData.find(s => s.originalIndex === currentSentenceIndex)?.originalText;
     const correctPosition = currentSentenceIndex + 1;
 
     return (
         <div className="ordering-tab-container">
-            <p className="progress-counter">Đã xếp đúng: {correctlyPlacedCount} / {sentenceData.length}</p>
-            <h3>❓ Câu này ở vị trí thứ mấy trong đoạn văn?</h3>
-            <div className="sentence-box">"{currentSentence}"</div>
-            <div className="ordering-options-grid">
-                {options.map(option => {
-                    let btnClass = 'ordering-btn';
-                    if (isAnswered) {
-                        if (option === correctPosition) btnClass += ' correct';
-                        else if (option === selectedAnswer) btnClass += ' incorrect';
-                        else btnClass += ' disabled';
-                    }
-                    return <button key={option} className={btnClass} onClick={() => handleAnswerSelect(option)} disabled={isAnswered}>Vị trí {option}</button>;
-                })}
-            </div>
-            {isAnswered && (
-                <div className="ordering-feedback">
-                    <h4>{selectedAnswer === correctPosition ? '✅ Chính xác!' : '❌ Sai rồi!'}</h4>
-                    <p>Câu này đứng ở vị trí thứ <strong>{correctPosition}</strong>.</p>
-                    <Button onClick={handleNextQuestion}>Câu tiếp theo →</Button>
+            <div className="ordering-card">
+                <div className="ordering-progress">
+                    Đã xếp đúng: <span className="ordering-success">{correctlyPlacedCount}</span> / <span>{sentenceData.length}</span>
                 </div>
-            )}
+                <h3>❓ Câu này ở vị trí thứ mấy trong đoạn văn?</h3>
+                <div className="ordering-sentence">"{currentSentence}"</div>
+                <div className="ordering-options-grid">
+                    {options.map(option => {
+                        let btnClass = 'ordering-btn';
+                        if (isAnswered) {
+                            if (option === correctPosition) btnClass += ' correct';
+                            else if (option === selectedAnswer) btnClass += ' incorrect';
+                            else btnClass += ' disabled';
+                        }
+                        return (
+                            <Button
+                                key={option}
+                                className={btnClass}
+                                onClick={() => handleAnswerSelect(option)}
+                                disabled={isAnswered}
+                                style={{ minWidth: 64, margin: '8px', borderRadius: 12 }}
+                            >
+                                Vị trí {option}
+                            </Button>
+                        );
+                    })}
+                </div>
+                {isAnswered && (
+                    <div className={`ordering-feedback ${selectedAnswer === correctPosition ? 'success' : 'error'}`}>
+                        <h4>{selectedAnswer === correctPosition ? '✅ Chính xác!' : '❌ Sai rồi!'}</h4>
+                        <p>Câu này đứng ở vị trí thứ <strong>{correctPosition}</strong>.</p>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
