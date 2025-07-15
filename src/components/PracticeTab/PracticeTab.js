@@ -6,9 +6,7 @@ import Feedback from './Feedback';
 import Button from '../common/Button';
 import './PracticeTab.css';
 
-// Hàm tạo prompt mới theo yêu cầu của bạn
 const createNewPrompt = (sentence) => {
-  // Thay thế câu ví dụ bằng câu thực tế
   return `Given the sentence: "${sentence}"
 
 1. Randomly hide one word using a blank (____).
@@ -20,6 +18,10 @@ Do not include any explanations or extra text beyond the requested content.`;
 
 // HÀM MỚI: Phân tích văn bản thô trả về từ AI
 const parseAIResponse = (rawText, originalSentence) => {
+  // BƯỚC 1: HÀM TIỆN ÍCH ĐỂ CHUẨN HÓA CHUỖI
+  // Chuyển về chữ thường và loại bỏ các ký tự không phải chữ/số
+  const normalizeString = (str) => str.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+
   const lines = rawText.split('\n').filter(line => line.trim() !== '');
 
   const question_sentence = lines[0] || '';
@@ -34,21 +36,34 @@ const parseAIResponse = (rawText, originalSentence) => {
     }
   }
 
-  // Suy luận đáp án đúng bằng cách thử điền các lựa chọn vào chỗ trống
+  // BƯỚC 2: SUY LUẬN ĐÁP ÁN ĐÚNG BẰNG CÁCH SO SÁNH CHUỖI ĐÃ CHUẨN HÓA
   let correct_answer = '';
+  const normalizedOriginalSentence = normalizeString(originalSentence);
+  
   for (const option of options) {
-    if (question_sentence.replace('____', option) === originalSentence) {
+    const reconstructedSentence = question_sentence.replace('____', option);
+    if (normalizeString(reconstructedSentence) === normalizedOriginalSentence) {
       correct_answer = option;
       break;
     }
   }
   
-  // Nếu không suy luận được (do AI che từ có dấu câu), lấy đáp án là từ bị thiếu
-  if (!correct_answer) {
-      const originalWords = originalSentence.split(' ');
-      const questionWords = question_sentence.replace('____', 'PLACEHOLDER').split(' ');
+  // Fallback: nếu vẫn không tìm thấy, thử tìm từ bị thiếu
+  if (!correct_answer && options.length > 0) {
+      const originalWords = originalSentence.split(' ').map(normalizeString);
+      const questionWords = question_sentence.replace('____', 'PLACEHOLDER').split(' ').map(normalizeString);
       const missingWord = originalWords.find(word => !questionWords.includes(word));
-      if (missingWord) correct_answer = missingWord.replace(/[.,]/g, '');
+      if (missingWord) {
+          // Tìm lựa chọn gần giống nhất với từ bị thiếu
+          const foundOption = options.find(opt => normalizeString(opt) === missingWord);
+          if (foundOption) correct_answer = foundOption;
+      }
+  }
+  
+  // Nếu vẫn không có, lấy tạm lựa chọn đầu tiên để tránh lỗi
+  if (!correct_answer && options.length > 0) {
+      console.warn("Could not deduce correct answer. Defaulting to first option.");
+      correct_answer = options[0];
   }
 
   const grammar_explanation = lines.find(line => line.toLowerCase().includes('ngữ pháp:'))?.substring(9).trim() || lines[5] || '';
@@ -56,7 +71,7 @@ const parseAIResponse = (rawText, originalSentence) => {
 
   return {
     question_sentence,
-    options: options.sort(() => Math.random() - 0.5), // Luôn xáo trộn đáp án
+    options: options.sort(() => Math.random() - 0.5),
     correct_answer: correct_answer.toLowerCase(),
     grammar_explanation,
     translation,
@@ -81,16 +96,13 @@ const PracticeTab = () => {
     setIsAnswered(false);
     
     try {
-      // 1. Chọn ngẫu nhiên một câu văn gốc
       const randomIndex = Math.floor(Math.random() * sentenceData.length);
       const sentenceObject = sentenceData[randomIndex];
       const originalSentence = sentenceObject.originalText;
 
-      // 2. Gửi prompt mới đến AI
       const prompt = createNewPrompt(originalSentence);
       const rawResponse = await callOpenRouterAPI(prompt, selectedModel);
       
-      // 3. Phân tích văn bản thô và tạo đối tượng câu hỏi
       const questionData = parseAIResponse(rawResponse, originalSentence);
       
       setCurrentQuestion(questionData);
@@ -101,7 +113,6 @@ const PracticeTab = () => {
     }
   }, [sentenceData, selectedModel]);
 
-  // Tải câu hỏi đầu tiên
   useEffect(() => {
     fetchAndProcessQuestion();
   }, [fetchAndProcessQuestion]);
@@ -113,7 +124,6 @@ const PracticeTab = () => {
   };
   
   const handleNextQuestion = () => {
-    // Chỉ cần gọi lại hàm để lấy một câu hỏi ngẫu nhiên mới
     fetchAndProcessQuestion();
   };
   
