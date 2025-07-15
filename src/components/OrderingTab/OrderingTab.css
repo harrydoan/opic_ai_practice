@@ -1,9 +1,8 @@
 .ordering-tab-container {
-min-height: 100vh;
-background: #f6fafd;
-display: flex;
-align-items: center;
-justify-content: center;
+  background: #f6fafd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .ordering-card {
