@@ -16,58 +16,58 @@ const createNewPrompt = (sentence) => {
 Do not include any explanations or extra text beyond the requested content.`;
 };
 
-// HÀM MỚI: Phân tích văn bản thô trả về từ AI
+// HÀM PHÂN TÍCH ĐÃ ĐƯỢC CẢI TIẾN
 const parseAIResponse = (rawText, originalSentence) => {
-  // BƯỚC 1: HÀM TIỆN ÍCH ĐỂ CHUẨN HÓA CHUỖI
-  // Chuyển về chữ thường và loại bỏ các ký tự không phải chữ/số
   const normalizeString = (str) => str.toLowerCase().replace(/[^a-z0-9\s]/g, '');
 
   const lines = rawText.split('\n').filter(line => line.trim() !== '');
+  if (lines.length === 0) return null;
 
-  const question_sentence = lines[0] || '';
+  const question_sentence = lines[0];
   
+  // =============================================================
+  // == LOGIC LẤY ĐÁP ÁN MỚI, LINH HOẠT HƠN ==
+  // =============================================================
   const options = [];
-  const optionLines = lines.slice(1, 5);
-  const optionRegex = /^[A-D]\.\s(.+)/;
-  for (const line of optionLines) {
-    const match = line.match(optionRegex);
-    if (match) {
+  // Quét toàn bộ các dòng để tìm các lựa chọn A, B, C, D
+  const optionRegex = /^[A-D]\.\s(.+)/i; // Thêm 'i' để không phân biệt hoa thường
+  for (const line of lines) {
+    const match = line.trim().match(optionRegex);
+    if (match && options.length < 4) { // Chỉ lấy 4 đáp án đầu tiên tìm thấy
       options.push(match[1].trim());
     }
   }
+  // =============================================================
 
-  // BƯỚC 2: SUY LUẬN ĐÁP ÁN ĐÚNG BẰNG CÁCH SO SÁNH CHUỖI ĐÃ CHUẨN HÓA
   let correct_answer = '';
-  const normalizedOriginalSentence = normalizeString(originalSentence);
-  
-  for (const option of options) {
-    const reconstructedSentence = question_sentence.replace('____', option);
-    if (normalizeString(reconstructedSentence) === normalizedOriginalSentence) {
-      correct_answer = option;
-      break;
-    }
+  if (options.length > 0) {
+      const normalizedOriginalSentence = normalizeString(originalSentence);
+      for (const option of options) {
+        const reconstructedSentence = question_sentence.replace('____', option);
+        if (normalizeString(reconstructedSentence) === normalizedOriginalSentence) {
+          correct_answer = option;
+          break;
+        }
+      }
   }
-  
-  // Fallback: nếu vẫn không tìm thấy, thử tìm từ bị thiếu
+
   if (!correct_answer && options.length > 0) {
       const originalWords = originalSentence.split(' ').map(normalizeString);
       const questionWords = question_sentence.replace('____', 'PLACEHOLDER').split(' ').map(normalizeString);
-      const missingWord = originalWords.find(word => !questionWords.includes(word));
+      const missingWord = originalWords.find(word => word && !questionWords.includes(word));
       if (missingWord) {
-          // Tìm lựa chọn gần giống nhất với từ bị thiếu
           const foundOption = options.find(opt => normalizeString(opt) === missingWord);
           if (foundOption) correct_answer = foundOption;
       }
   }
   
-  // Nếu vẫn không có, lấy tạm lựa chọn đầu tiên để tránh lỗi
   if (!correct_answer && options.length > 0) {
       console.warn("Could not deduce correct answer. Defaulting to first option.");
       correct_answer = options[0];
   }
 
-  const grammar_explanation = lines.find(line => line.toLowerCase().includes('ngữ pháp:'))?.substring(9).trim() || lines[5] || '';
-  const translation = lines.find(line => line.toLowerCase().includes('dịch:'))?.substring(5).trim() || lines[6] || '';
+  const grammar_explanation = lines.find(line => line.toLowerCase().includes('ngữ pháp:'))?.substring(9).trim() || '';
+  const translation = lines.find(line => line.toLowerCase().includes('dịch:'))?.substring(5).trim() || '';
 
   return {
     question_sentence,
@@ -105,6 +105,12 @@ const PracticeTab = () => {
       
       const questionData = parseAIResponse(rawResponse, originalSentence);
       
+      if (!questionData || questionData.options.length < 4) {
+          console.error("Failed to parse options correctly, trying again.");
+          fetchAndProcessQuestion(); // Tự động thử lại nếu phân tích thất bại
+          return;
+      }
+
       setCurrentQuestion(questionData);
     } catch (error) {
       console.error("Failed to process question:", error);
