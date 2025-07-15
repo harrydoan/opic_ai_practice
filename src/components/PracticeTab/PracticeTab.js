@@ -16,58 +16,67 @@ const createNewPrompt = (sentence) => {
 Do not include any explanations or extra text beyond the requested content.`;
 };
 
-// HÀM PHÂN TÍCH ĐÃ ĐƯỢC CẢI TIẾN
+// HÀM PHÂN TÍCH DỮ LIỆU ĐÃ ĐƯỢC LÀM LẠI HOÀN TOÀN
 const parseAIResponse = (rawText, originalSentence) => {
   const normalizeString = (str) => str.toLowerCase().replace(/[^a-z0-9\s]/g, '');
 
   const lines = rawText.split('\n').filter(line => line.trim() !== '');
-  if (lines.length === 0) return null;
+  if (lines.length < 5) return null; // Cần ít nhất 1 câu hỏi, 4 đáp án
 
-  const question_sentence = lines[0];
-  
-  // =============================================================
-  // == LOGIC LẤY ĐÁP ÁN MỚI, LINH HOẠT HƠN ==
-  // =============================================================
+  let question_sentence = '';
   const options = [];
-  // Quét toàn bộ các dòng để tìm các lựa chọn A, B, C, D
-  const optionRegex = /^[A-D]\.\s(.+)/i; // Thêm 'i' để không phân biệt hoa thường
+  let grammar_explanation = '';
+  let translation = '';
+
+  const optionRegex = /^[A-D][\.\)]\s(.+)/i;
+
+  // Quét toàn bộ các dòng để tìm các thành phần
   for (const line of lines) {
-    const match = line.trim().match(optionRegex);
-    if (match && options.length < 4) { // Chỉ lấy 4 đáp án đầu tiên tìm thấy
-      options.push(match[1].trim());
+    const trimmedLine = line.trim();
+    const optionMatch = trimmedLine.match(optionRegex);
+
+    if (optionMatch && options.length < 4) {
+      options.push(optionMatch[1].trim());
+    } else if (trimmedLine.includes('____') && !question_sentence) {
+      question_sentence = trimmedLine;
+    } else if (trimmedLine.toLowerCase().startsWith('ngữ pháp:')) {
+      grammar_explanation = trimmedLine.substring(9).trim();
+    } else if (trimmedLine.toLowerCase().startsWith('dịch:')) {
+      translation = trimmedLine.substring(5).trim();
     }
   }
-  // =============================================================
 
-  let correct_answer = '';
-  if (options.length > 0) {
-      const normalizedOriginalSentence = normalizeString(originalSentence);
-      for (const option of options) {
-        const reconstructedSentence = question_sentence.replace('____', option);
-        if (normalizeString(reconstructedSentence) === normalizedOriginalSentence) {
-          correct_answer = option;
-          break;
-        }
-      }
+  // Nếu không tìm thấy câu hỏi, lấy dòng đầu tiên
+  if (!question_sentence) {
+    question_sentence = lines[0];
   }
 
-  if (!correct_answer && options.length > 0) {
-      const originalWords = originalSentence.split(' ').map(normalizeString);
-      const questionWords = question_sentence.replace('____', 'PLACEHOLDER').split(' ').map(normalizeString);
-      const missingWord = originalWords.find(word => word && !questionWords.includes(word));
-      if (missingWord) {
-          const foundOption = options.find(opt => normalizeString(opt) === missingWord);
-          if (foundOption) correct_answer = foundOption;
-      }
+  // Nếu không tìm thấy giải thích, thử lấy các dòng cuối
+  if (!grammar_explanation && lines.length > options.length + 1) {
+    grammar_explanation = lines[options.length + 1];
+  }
+  if (!translation && lines.length > options.length + 2) {
+    translation = lines[options.length + 2];
+  }
+
+  // Nếu không đủ 4 lựa chọn, coi như phân tích thất bại
+  if (options.length < 4) return null;
+
+  // Suy luận đáp án đúng
+  let correct_answer = '';
+  const normalizedOriginalSentence = normalizeString(originalSentence);
+  for (const option of options) {
+    const reconstructedSentence = question_sentence.replace('____', option);
+    if (normalizeString(reconstructedSentence) === normalizedOriginalSentence) {
+      correct_answer = option;
+      break;
+    }
   }
   
-  if (!correct_answer && options.length > 0) {
-      console.warn("Could not deduce correct answer. Defaulting to first option.");
-      correct_answer = options[0];
+  if (!correct_answer) {
+    console.warn("Could not deduce correct answer. The AI might have changed the sentence structure.");
+    return null; // Phân tích thất bại nếu không tìm được đáp án đúng
   }
-
-  const grammar_explanation = lines.find(line => line.toLowerCase().includes('ngữ pháp:'))?.substring(9).trim() || '';
-  const translation = lines.find(line => line.toLowerCase().includes('dịch:'))?.substring(5).trim() || '';
 
   return {
     question_sentence,
@@ -85,6 +94,7 @@ const PracticeTab = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
+  const [error, setError] = useState(null); // State mới để quản lý lỗi
 
   const fetchAndProcessQuestion = useCallback(async () => {
     if (sentenceData.length === 0) {
@@ -94,6 +104,7 @@ const PracticeTab = () => {
 
     setIsLoading(true);
     setIsAnswered(false);
+    setError(null); // Xóa lỗi cũ
     
     try {
       const randomIndex = Math.floor(Math.random() * sentenceData.length);
@@ -105,15 +116,15 @@ const PracticeTab = () => {
       
       const questionData = parseAIResponse(rawResponse, originalSentence);
       
-      if (!questionData || questionData.options.length < 4) {
-          console.error("Failed to parse options correctly, trying again.");
-          fetchAndProcessQuestion(); // Tự động thử lại nếu phân tích thất bại
-          return;
+      if (questionData) {
+        setCurrentQuestion(questionData);
+      } else {
+        throw new Error("Failed to parse AI response. The format might be incorrect.");
       }
 
-      setCurrentQuestion(questionData);
-    } catch (error) {
-      console.error("Failed to process question:", error);
+    } catch (err) {
+      console.error("Error in fetchAndProcessQuestion:", err);
+      setError(err.message); // Lưu lại lỗi để hiển thị
     } finally {
       setIsLoading(false);
     }
@@ -141,6 +152,18 @@ const PracticeTab = () => {
       </div>
     );
   }
+
+  // Giao diện hiển thị lỗi và nút thử lại
+  if (error) {
+    return (
+        <div className="processing-container">
+            <p>Rất tiếc, đã có lỗi xảy ra khi tạo câu hỏi.</p>
+            <p><i>{error}</i></p>
+            <Button onClick={handleNextQuestion}>Thử lại</Button>
+        </div>
+    );
+  }
+  
   if (!currentQuestion) {
     return <p>Không có câu hỏi nào để hiển thị. Vui lòng kiểm tra lại tab 'Nhập liệu'.</p>;
   }
