@@ -34,15 +34,10 @@ const InputTab = () => {
 
   const handleFetchData = async () => {
     setIsLoading(true);
-    const OPIC_PROMPT = `Act as an OPIC test expert. Your task is to provide one random question and a corresponding sample answer for the AL (Advanced Low) level.
-
-**Crucial Instruction:** The output must ONLY contain the text of the question followed by the text of the answer. Do not include any labels like "Question:", "Answer:", headers, introductory sentences, or markdown formatting.
-
-**Example of correct output format:**
-"Can you describe a memorable trip you've taken?
-Of course. One of the most memorable trips I've ever taken was to Da Nang last summer. The beaches were absolutely pristine, and the local cuisine was a delightful experience. I particularly enjoyed visiting the Marble Mountains and seeing the city from above. It was a perfect blend of relaxation and adventure."
-
-Now, generate a new, random question and answer following this format exactly.`;
+    const OPIC_PROMPT = `Give me one OPIC question and a sample answer at the AL (Advanced Low) level.
+The answer should be 150–200 words, natural, fluent, and include personal details and storytelling.
+Use informal spoken English.
+Only output the question and the answer. Do not include any introductions, labels, titles, or extra text.`;
     const result = await callOpenRouterAPI(OPIC_PROMPT, selectedModel);
     const cleanedText = cleanOpicResponse(result);
     setOpicText(cleanedText);
