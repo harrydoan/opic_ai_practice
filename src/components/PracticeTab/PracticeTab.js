@@ -16,12 +16,11 @@ const createNewPrompt = (sentence) => {
 Do not include any explanations or extra text beyond the requested content.`;
 };
 
-// HÀM PHÂN TÍCH DỮ LIỆU ĐÃ ĐƯỢC LÀM LẠI HOÀN TOÀN
 const parseAIResponse = (rawText, originalSentence) => {
   const normalizeString = (str) => str.toLowerCase().replace(/[^a-z0-9\s]/g, '');
 
   const lines = rawText.split('\n').filter(line => line.trim() !== '');
-  if (lines.length < 5) return null; // Cần ít nhất 1 câu hỏi, 4 đáp án
+  if (lines.length < 5) return null;
 
   let question_sentence = '';
   const options = [];
@@ -30,7 +29,6 @@ const parseAIResponse = (rawText, originalSentence) => {
 
   const optionRegex = /^[A-D][\.\)]\s(.+)/i;
 
-  // Quét toàn bộ các dòng để tìm các thành phần
   for (const line of lines) {
     const trimmedLine = line.trim();
     const optionMatch = trimmedLine.match(optionRegex);
@@ -46,12 +44,10 @@ const parseAIResponse = (rawText, originalSentence) => {
     }
   }
 
-  // Nếu không tìm thấy câu hỏi, lấy dòng đầu tiên
   if (!question_sentence) {
     question_sentence = lines[0];
   }
 
-  // Nếu không tìm thấy giải thích, thử lấy các dòng cuối
   if (!grammar_explanation && lines.length > options.length + 1) {
     grammar_explanation = lines[options.length + 1];
   }
@@ -59,10 +55,8 @@ const parseAIResponse = (rawText, originalSentence) => {
     translation = lines[options.length + 2];
   }
 
-  // Nếu không đủ 4 lựa chọn, coi như phân tích thất bại
   if (options.length < 4) return null;
 
-  // Suy luận đáp án đúng
   let correct_answer = '';
   const normalizedOriginalSentence = normalizeString(originalSentence);
   for (const option of options) {
@@ -73,9 +67,19 @@ const parseAIResponse = (rawText, originalSentence) => {
     }
   }
   
-  if (!correct_answer) {
-    console.warn("Could not deduce correct answer. The AI might have changed the sentence structure.");
-    return null; // Phân tích thất bại nếu không tìm được đáp án đúng
+  if (!correct_answer && options.length > 0) {
+    const originalWords = originalSentence.split(' ').map(normalizeString);
+    const questionWords = question_sentence.replace('____', 'PLACEHOLDER').split(' ').map(normalizeString);
+    const missingWord = originalWords.find(word => word && !questionWords.includes(word));
+    if (missingWord) {
+        const foundOption = options.find(opt => normalizeString(opt) === missingWord);
+        if (foundOption) correct_answer = foundOption;
+    }
+  }
+  
+  if (!correct_answer && options.length > 0) {
+      console.warn("Could not deduce correct answer. Defaulting to first option.");
+      correct_answer = options[0];
   }
 
   return {
@@ -94,7 +98,7 @@ const PracticeTab = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
-  const [error, setError] = useState(null); // State mới để quản lý lỗi
+  const [error, setError] = useState(null);
 
   const fetchAndProcessQuestion = useCallback(async () => {
     if (sentenceData.length === 0) {
@@ -104,7 +108,7 @@ const PracticeTab = () => {
 
     setIsLoading(true);
     setIsAnswered(false);
-    setError(null); // Xóa lỗi cũ
+    setError(null);
     
     try {
       const randomIndex = Math.floor(Math.random() * sentenceData.length);
@@ -124,7 +128,7 @@ const PracticeTab = () => {
 
     } catch (err) {
       console.error("Error in fetchAndProcessQuestion:", err);
-      setError(err.message); // Lưu lại lỗi để hiển thị
+      setError(err.message);
     } finally {
       setIsLoading(false);
     }
@@ -153,7 +157,6 @@ const PracticeTab = () => {
     );
   }
 
-  // Giao diện hiển thị lỗi và nút thử lại
   if (error) {
     return (
         <div className="processing-container">
