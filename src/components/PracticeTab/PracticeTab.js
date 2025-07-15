@@ -16,71 +16,66 @@ const createNewPrompt = (sentence) => {
 Do not include any explanations or extra text beyond the requested content.`;
 };
 
+// ========================================================================
+// == HÀM PHÂN TÍCH MỚI, VIẾT LẠI DỰA TRÊN VÍ DỤ CỦA BẠN ==
+// ========================================================================
 const parseAIResponse = (rawText, originalSentence) => {
   const normalizeString = (str) => str.toLowerCase().replace(/[^a-z0-9\s]/g, '');
-
-  const lines = rawText.split('\n').filter(line => line.trim() !== '');
-  if (lines.length < 5) return null;
+  const lines = rawText.split('\n');
 
   let question_sentence = '';
   const options = [];
   let grammar_explanation = '';
   let translation = '';
 
-  // === DÒNG ĐÃ SỬA LỖI ===
-  const optionRegex = /^[A-D][.)]\s(.+)/i; // Xóa dấu \ trước . và )
+  const optionRegex = /^\s*[A-D][.)]\s(.+)/i;
+  const grammarHeaderRegex = /ngữ pháp/i;
+  const translationHeaderRegex = /dịch/i;
+
+  let currentSection = ''; // Theo dõi đang ở phần nào: grammar hay translation
 
   for (const line of lines) {
     const trimmedLine = line.trim();
     const optionMatch = trimmedLine.match(optionRegex);
 
-    if (optionMatch && options.length < 4) {
-      options.push(optionMatch[1].trim());
-    } else if (trimmedLine.includes('____') && !question_sentence) {
+    if (trimmedLine.includes('____')) {
       question_sentence = trimmedLine;
-    } else if (trimmedLine.toLowerCase().startsWith('ngữ pháp:')) {
-      grammar_explanation = trimmedLine.substring(9).trim();
-    } else if (trimmedLine.toLowerCase().startsWith('dịch:')) {
-      translation = trimmedLine.substring(5).trim();
+    } else if (optionMatch) {
+      options.push(optionMatch[1].trim());
+    } else if (grammarHeaderRegex.test(trimmedLine)) {
+      currentSection = 'grammar';
+    } else if (translationHeaderRegex.test(trimmedLine)) {
+      currentSection = 'translation';
+    } else if (trimmedLine) { // Nếu dòng có nội dung
+      if (currentSection === 'grammar') {
+        grammar_explanation += (grammar_explanation ? '\n' : '') + trimmedLine;
+      } else if (currentSection === 'translation') {
+        translation += (translation ? ' ' : '') + trimmedLine;
+      }
     }
   }
 
-  if (!question_sentence) {
-    question_sentence = lines[0];
+  // Xử lý trường hợp không tìm thấy đủ thông tin
+  if (options.length < 4 || !question_sentence) {
+    console.error("Parser failed: Could not find all required parts.", { question_sentence, options });
+    return null;
   }
 
-  if (!grammar_explanation && lines.length > options.length + 1) {
-    grammar_explanation = lines[options.length + 1];
-  }
-  if (!translation && lines.length > options.length + 2) {
-    translation = lines[options.length + 2];
-  }
-
-  if (options.length < 4) return null;
-
+  // Suy luận đáp án đúng
   let correct_answer = '';
   const normalizedOriginalSentence = normalizeString(originalSentence);
   for (const option of options) {
-    const reconstructedSentence = question_sentence.replace('____', option);
+    // Thử thay thế cả dấu cách để xử lý các từ ghép
+    const reconstructedSentence = question_sentence.replace(' ____ ', ` ${option} `).replace('____ ', `${option} `).replace(' ____', ` ${option}`);
     if (normalizeString(reconstructedSentence) === normalizedOriginalSentence) {
       correct_answer = option;
       break;
     }
   }
-  
-  if (!correct_answer && options.length > 0) {
-    const originalWords = originalSentence.split(' ').map(normalizeString);
-    const questionWords = question_sentence.replace('____', 'PLACEHOLDER').split(' ').map(normalizeString);
-    const missingWord = originalWords.find(word => word && !questionWords.includes(word));
-    if (missingWord) {
-        const foundOption = options.find(opt => normalizeString(opt) === missingWord);
-        if (foundOption) correct_answer = foundOption;
-    }
-  }
-  
-  if (!correct_answer && options.length > 0) {
-      console.warn("Could not deduce correct answer. Defaulting to first option.");
-      correct_answer = options[0];
+
+  if (!correct_answer) {
+    console.warn("Could not deduce correct answer by substitution.");
+    return null; // Trả về null nếu không thể xác định đáp án đúng
   }
 
   return {
@@ -92,8 +87,10 @@ const parseAIResponse = (rawText, originalSentence) => {
   };
 };
 
+
 const PracticeTab = () => {
-  const { sentenceData, setSentenceData, selectedModel } = useContext(AppContext);
+  const { sentenceData, selectedModel } = useContext(AppContext);
+  
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAnswered, setIsAnswered] = useState(false);
@@ -123,12 +120,14 @@ const PracticeTab = () => {
       if (questionData) {
         setCurrentQuestion(questionData);
       } else {
-        throw new Error("Failed to parse AI response. The format might be incorrect.");
+        throw new Error("Failed to parse AI response. Retrying with a new question.");
       }
 
     } catch (err) {
       console.error("Error in fetchAndProcessQuestion:", err);
       setError(err.message);
+      // Nếu có lỗi, tự động thử lại sau một khoảng ngắn
+      setTimeout(() => fetchAndProcessQuestion(), 500);
     } finally {
       setIsLoading(false);
     }
