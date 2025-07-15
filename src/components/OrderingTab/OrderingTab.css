@@ -1,29 +1,9 @@
-/* Thêm vào file src/components/OrderingTab/OrderingTab.css */
-.progress-counter {
-    font-size: 0.9em;
-    font-weight: bold;
-    color: #6c757d;
-    align-self: flex-start;
-}
-
-.completion-message {
-    padding: 30px;
-    background-color: #e8f5e9; /* Màu xanh lá nhạt */
-    border-left: 5px solid #4caf50;
-    text-align: center;
-}
-
-.completion-message h4 {
-    color: #2e7d32;
-    margin-top: 0;
-}
-
-.ordering-tab-container {
+.practice-tab-container {
   min-height: 100vh;
   background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
   display: flex; align-items: center; justify-content: center;
 }
-.ordering-card {
+.practice-card {
   background: #fff;
   border-radius: 18px;
   box-shadow: 0 4px 24px rgba(79,172,254,0.15);
@@ -32,12 +12,11 @@
   width: 100%;
   text-align: center;
 }
-.ordering-progress {
+.practice-progress {
   font-size: 1em;
   margin-bottom: 12px;
 }
-.ordering-success { color: #28a745; font-weight: bold; }
-.ordering-sentence {
+.practice-question {
   margin: 18px 0;
   font-size: 1.1em;
   color: #333;
@@ -46,10 +25,10 @@
   padding: 12px;
   box-shadow: 0 2px 8px rgba(79,172,254,0.07);
 }
-.ordering-options-grid {
+.practice-options {
   display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin: 18px 0;
 }
-.ordering-btn {
+.practice-btn {
   border-radius: 12px;
   font-size: 1.1em;
   background: #eaf6ff;
@@ -58,9 +37,8 @@
   border: none;
   transition: background 0.2s, color 0.2s;
 }
-.ordering-btn.correct { background: #28a745; color: #fff; }
-.ordering-btn.incorrect { background: #dc3545; color: #fff; }
-.ordering-btn.disabled { opacity: 0.5; pointer-events: none; }
-.ordering-feedback.success { color: #28a745; margin-top: 12px; }
-.ordering-feedback.error { color: #dc3545; margin-top: 12px; }
-.completion-message h2 { color: #4facfe; }
+.practice-btn.correct { background: #28a745; color: #fff; }
+.practice-btn.incorrect { background: #dc3545; color: #fff; }
+.practice-btn.disabled { opacity: 0.5; pointer-events: none; }
+.practice-feedback.success { color: #28a745; margin-top: 12px; }
+.practice-feedback.error { color: #dc3545; margin-top: 12px; }
