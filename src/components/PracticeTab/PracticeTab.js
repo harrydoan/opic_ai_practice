@@ -12,116 +12,110 @@ Your task is to create a challenging fill-in-the-blank question.
 1. Analyze the sentence and choose a single, meaningful word to be the blanked-out answer.
 2. Create three incorrect but plausible distractor words of the same grammatical type.
 3. Provide a concise grammar explanation in Vietnamese.
-4. Provide the full Vietnamese translation of the sentence.
-
-Return the result ONLY as a single, raw JSON object with the following structure. Do not include any extra text, markdown formatting like \`\`\`json, or explanations outside of the JSON object itself.
-{
-  "question_sentence": "The sentence with '_____' in place of the correct word.",
-  "options": ["correct_word", "distractor1", "distractor2", "distractor3"],
-  "correct_answer": "the_correct_word_in_lowercase",
-  "grammar_explanation": "Your Vietnamese grammar explanation here.",
-  "translation": "Your Vietnamese translation here."
-}`;
+4. Provide the full Vietnamese translation of the sentence.`;
 };
 
-// ========================================================================
-// == HÀM PHÂN TÍCH MỚI, CÓ KHẢ NĂNG XỬ LÝ MARKDOWN ==
-// ========================================================================
 const parseAIResponse = (rawText) => {
   try {
     let textToParse = rawText;
-
-    // Cố gắng tìm và trích xuất nội dung từ khối mã markdown (```json ... ```)
     const markdownMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
     if (markdownMatch && markdownMatch[1]) {
       textToParse = markdownMatch[1];
     }
-
-    // Tìm khối JSON đầu tiên trong chuỗi đã được xử lý
     const jsonMatch = textToParse.match(/{[\s\S]*}/);
     if (jsonMatch) {
       return JSON.parse(jsonMatch[0]);
     }
-    
-    console.error("Parser failed: No valid JSON object found in AI response.", rawText);
     return null;
   } catch (error) {
-    console.error("JSON parsing error:", error, "Raw text:", rawText);
     return null;
   }
 };
 
+const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
 
 const PracticeTab = () => {
   const { sentenceData, selectedModel } = useContext(AppContext);
-  
+
+  // Bộ bài chỉ số câu, không lặp lại cho đến khi hết bộ
+  const [deck, setDeck] = useState([]);
+  const [pointer, setPointer] = useState(0);
+
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [error, setError] = useState(null);
 
-  const fetchAndProcessQuestion = useCallback(async (retryCount = 3) => {
-    if (sentenceData.length === 0) {
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    setIsAnswered(false);
-    setError(null);
-    
-    try {
-      const randomIndex = Math.floor(Math.random() * sentenceData.length);
-      const sentenceObject = sentenceData[randomIndex];
-      
-      const prompt = createQuestionPrompt(sentenceObject.originalText);
-      const rawResponse = await callOpenRouterAPI(prompt, selectedModel);
-      
-      const questionData = parseAIResponse(rawResponse);
-      
-      if (questionData && questionData.options && questionData.correct_answer) {
-        const correctAnswerLower = questionData.correct_answer.toLowerCase();
-        if (!questionData.options.map(o => o.toLowerCase()).includes(correctAnswerLower)) {
-            questionData.options[0] = questionData.correct_answer;
-        }
-        questionData.options = questionData.options.sort(() => Math.random() - 0.5);
-        
-        setCurrentQuestion(questionData);
-      } else {
-        throw new Error("AI did not return valid JSON, even after parsing.");
-      }
-
-    } catch (err) {
-      console.error(`Error fetching/parsing question (attempt ${4 - retryCount}):`, err);
-      if (retryCount > 1) {
-        // Tự động thử lại với một câu khác nếu có lỗi
-        setTimeout(() => fetchAndProcessQuestion(retryCount - 1), 500);
-      } else {
-        setError("AI is not responding correctly. Please try again later.");
-        setIsLoading(false);
-      }
-    } finally {
-      if (retryCount <= 1) {
-        setIsLoading(false);
-      }
-    }
-  }, [sentenceData, selectedModel]);
-
+  // Khởi tạo bộ bài ngẫu nhiên khi có dữ liệu
   useEffect(() => {
-    fetchAndProcessQuestion();
-  }, [fetchAndProcessQuestion]);
+    if (sentenceData.length > 0) {
+      setDeck(shuffleArray(Array.from(Array(sentenceData.length).keys())));
+      setPointer(0);
+    }
+  }, [sentenceData]);
+
+  // Gửi câu hỏi cho AI mỗi khi pointer thay đổi
+  useEffect(() => {
+    const fetchQuestion = async () => {
+      setIsLoading(true);
+      setIsAnswered(false);
+      setSelectedAnswer(null);
+      setError(null);
+
+      if (!deck.length || pointer >= deck.length) {
+        // Nếu hết bộ bài, xáo lại và bắt đầu vòng mới
+        const newDeck = shuffleArray(Array.from(Array(sentenceData.length).keys()));
+        setDeck(newDeck);
+        setPointer(0);
+        return;
+      }
+
+      const sentenceIndex = deck[pointer];
+      const sentenceObject = sentenceData[sentenceIndex];
+      if (!sentenceObject) {
+        setError("Không tìm thấy câu hỏi.");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const prompt = createQuestionPrompt(sentenceObject.originalText);
+        const rawResponse = await callOpenRouterAPI(prompt, selectedModel);
+        const questionData = parseAIResponse(rawResponse);
+
+        if (questionData && questionData.options && questionData.correct_answer) {
+          const correctAnswerLower = questionData.correct_answer.toLowerCase();
+          if (!questionData.options.map(o => o.toLowerCase()).includes(correctAnswerLower)) {
+            questionData.options[0] = questionData.correct_answer;
+          }
+          questionData.options = shuffleArray(questionData.options);
+          setCurrentQuestion(questionData);
+        } else {
+          throw new Error("AI không trả về dữ liệu hợp lệ.");
+        }
+      } catch (err) {
+        setError("AI không phản hồi đúng. Vui lòng thử lại.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (sentenceData.length > 0 && deck.length > 0) {
+      fetchQuestion();
+    }
+  }, [pointer, deck, sentenceData, selectedModel]);
 
   const handleAnswerSelect = (answer) => {
     if (isAnswered) return;
     setIsAnswered(true);
     setSelectedAnswer(answer);
   };
-  
+
   const handleNextQuestion = () => {
-    fetchAndProcessQuestion();
+    setPointer((prev) => prev + 1);
   };
-  
+
   if (isLoading) {
     return (
       <div className="processing-container">
@@ -133,25 +127,25 @@ const PracticeTab = () => {
 
   if (error) {
     return (
-        <div className="processing-container">
-            <p>An error occurred:</p>
-            <p><i>{error}</i></p>
-            <Button onClick={handleNextQuestion}>Try Again</Button>
-        </div>
+      <div className="processing-container">
+        <p>An error occurred:</p>
+        <p><i>{error}</i></p>
+        <Button onClick={handleNextQuestion}>Try Again</Button>
+      </div>
     );
   }
-  
+
   if (!currentQuestion) {
     return <p>No questions to display. Please check the 'Input' tab.</p>;
   }
-  
+
   return (
     <div className="practice-tab-container">
-      <Question 
+      <Question
         question={{
-            question: currentQuestion.question_sentence,
-            options: currentQuestion.options,
-            correctAnswer: currentQuestion.correct_answer,
+          question: currentQuestion.question_sentence,
+          options: currentQuestion.options,
+          correctAnswer: currentQuestion.correct_answer,
         }}
         onAnswerSelect={handleAnswerSelect}
         selectedAnswer={selectedAnswer}
@@ -159,12 +153,12 @@ const PracticeTab = () => {
       />
       {isAnswered && (
         <div className="feedback-and-next">
-          <Feedback 
+          <Feedback
             isCorrect={selectedAnswer.toLowerCase() === currentQuestion.correct_answer.toLowerCase()}
             question={{
-                explanation: `Đáp án đúng là "${currentQuestion.correct_answer}".`,
-                grammar: currentQuestion.grammar_explanation,
-                translation: currentQuestion.translation,
+              explanation: `Đáp án đúng là "${currentQuestion.correct_answer}".`,
+              grammar: currentQuestion.grammar_explanation,
+              translation: currentQuestion.translation,
             }}
             isLoading={false}
           />
