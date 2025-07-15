@@ -43,6 +43,7 @@ const PracticeTab = () => {
   const fetchQuestionForPointer = useCallback(async (targetPointer, currentDeck) => {
     if (!currentDeck || currentDeck.length === 0 || targetPointer < 0) {
       setIsLoading(false);
+      setCurrentQuestion(null);
       return;
     }
 
@@ -55,8 +56,8 @@ const PracticeTab = () => {
     const sentenceObject = sentenceData.find(s => s.originalIndex === sentenceIndex);
 
     if (!sentenceObject) {
-      console.error("Sentence object not found for index:", sentenceIndex);
       setIsLoading(false);
+      setCurrentQuestion(null);
       return;
     }
 
@@ -75,7 +76,6 @@ const PracticeTab = () => {
 
       setCurrentQuestion(questionData);
     } catch (error) {
-      console.error("Failed to generate question:", error);
       setCurrentQuestion(null);
     } finally {
       setIsLoading(false);
@@ -88,7 +88,6 @@ const PracticeTab = () => {
       let initialDeck = userDefinedOrder
         ? userDefinedOrder
         : shuffleArray(Array.from(Array(sentenceData.length).keys()));
-      // Loại bỏ câu vừa hỏi nếu có nhiều hơn 1 câu
       if (lastIndex !== null && initialDeck.length > 1) {
         initialDeck = initialDeck.filter(idx => idx !== lastIndex);
       }
