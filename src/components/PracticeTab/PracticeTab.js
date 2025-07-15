@@ -12,7 +12,15 @@ Your task is to create a challenging fill-in-the-blank question.
 1. Analyze the sentence and choose a single, meaningful word to be the blanked-out answer.
 2. Create three incorrect but plausible distractor words of the same grammatical type.
 3. Provide a concise grammar explanation in Vietnamese.
-4. Provide the full Vietnamese translation of the sentence.`;
+4. Provide the full Vietnamese translation of the sentence.
+Return the result ONLY as a single, raw JSON object. Do not include any extra text or markdown formatting.
+{
+  "question_sentence": "...",
+  "options": ["...", "...", "...", "..."],
+  "correct_answer": "...",
+  "grammar_explanation": "...",
+  "translation": "..."
+}`;
 };
 
 const parseAIResponse = (rawText) => {
@@ -24,7 +32,18 @@ const parseAIResponse = (rawText) => {
     }
     const jsonMatch = textToParse.match(/{[\s\S]*}/);
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+      const obj = JSON.parse(jsonMatch[0]);
+      // Kiểm tra đủ trường cần thiết
+      if (
+        obj.question_sentence &&
+        Array.isArray(obj.options) &&
+        obj.options.length === 4 &&
+        obj.correct_answer &&
+        obj.grammar_explanation &&
+        obj.translation
+      ) {
+        return obj;
+      }
     }
     return null;
   } catch (error) {
@@ -39,7 +58,7 @@ const PracticeTab = () => {
 
   // Bộ bài chỉ số câu, không lặp lại cho đến khi hết bộ
   const [deck, setDeck] = useState([]);
-  const [pointer, setPointer] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(null);
 
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,11 +70,18 @@ const PracticeTab = () => {
   useEffect(() => {
     if (sentenceData.length > 0) {
       setDeck(shuffleArray(Array.from(Array(sentenceData.length).keys())));
-      setPointer(0);
+      setCurrentIndex(0);
     }
   }, [sentenceData]);
 
-  // Gửi câu hỏi cho AI mỗi khi pointer thay đổi
+  // Chọn ngẫu nhiên 1 câu chưa hỏi trong deck
+  const pickRandomIndex = (deckArr) => {
+    if (!deckArr || deckArr.length === 0) return null;
+    const randomIdx = Math.floor(Math.random() * deckArr.length);
+    return deckArr[randomIdx];
+  };
+
+  // Gửi câu hỏi cho AI mỗi khi currentIndex thay đổi
   useEffect(() => {
     const fetchQuestion = async () => {
       setIsLoading(true);
@@ -63,16 +89,17 @@ const PracticeTab = () => {
       setSelectedAnswer(null);
       setError(null);
 
-      if (!deck.length || pointer >= deck.length) {
+      if (!deck.length) {
         // Nếu hết bộ bài, xáo lại và bắt đầu vòng mới
         const newDeck = shuffleArray(Array.from(Array(sentenceData.length).keys()));
         setDeck(newDeck);
-        setPointer(0);
+        setCurrentIndex(0);
+        setIsLoading(false);
         return;
       }
 
-      const sentenceIndex = deck[pointer];
-      const sentenceObject = sentenceData[sentenceIndex];
+      const sentenceIdx = typeof currentIndex === 'number' ? deck[currentIndex] : pickRandomIndex(deck);
+      const sentenceObject = sentenceData[sentenceIdx];
       if (!sentenceObject) {
         setError("Không tìm thấy câu hỏi.");
         setIsLoading(false);
@@ -101,10 +128,10 @@ const PracticeTab = () => {
       }
     };
 
-    if (sentenceData.length > 0 && deck.length > 0) {
+    if (sentenceData.length > 0 && deck.length > 0 && (typeof currentIndex === 'number')) {
       fetchQuestion();
     }
-  }, [pointer, deck, sentenceData, selectedModel]);
+  }, [currentIndex, deck, sentenceData, selectedModel]);
 
   const handleAnswerSelect = (answer) => {
     if (isAnswered) return;
@@ -113,7 +140,17 @@ const PracticeTab = () => {
   };
 
   const handleNextQuestion = () => {
-    setPointer((prev) => prev + 1);
+    // Loại bỏ câu vừa hỏi khỏi deck
+    if (deck.length <= 1) {
+      // Nếu hết bộ bài, xáo lại và bắt đầu vòng mới
+      setDeck(shuffleArray(Array.from(Array(sentenceData.length).keys())));
+      setCurrentIndex(0);
+    } else {
+      const newDeck = deck.filter((_, idx) => idx !== currentIndex);
+      const nextIdx = pickRandomIndex(newDeck);
+      setDeck(newDeck);
+      setCurrentIndex(newDeck.indexOf(nextIdx));
+    }
   };
 
   if (isLoading) {
@@ -154,7 +191,7 @@ const PracticeTab = () => {
       {isAnswered && (
         <div className="feedback-and-next">
           <Feedback
-            isCorrect={selectedAnswer.toLowerCase() === currentQuestion.correct_answer.toLowerCase()}
+            isCorrect={selectedAnswer && selectedAnswer.toLowerCase() === currentQuestion.correct_answer.toLowerCase()}
             question={{
               explanation: `Đáp án đúng là "${currentQuestion.correct_answer}".`,
               grammar: currentQuestion.grammar_explanation,
