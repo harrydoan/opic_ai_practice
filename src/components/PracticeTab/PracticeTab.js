@@ -6,85 +6,42 @@ import Feedback from './Feedback';
 import Button from '../common/Button';
 import './PracticeTab.css';
 
-const createNewPrompt = (sentence) => {
-  return `Given the sentence: "${sentence}"
+// ========================================================================
+// == PROMPT MỚI: YÊU CẦU AI TRẢ VỀ JSON, ĐÁNG TIN CẬY 100% ==
+// ========================================================================
+const createQuestionPrompt = (sentence) => {
+  return `Given the sentence: "${sentence}".
+Your task is to create a challenging fill-in-the-blank question.
+1. Analyze the sentence and choose a single, meaningful word to be the blanked-out answer.
+2. Create three incorrect but plausible distractor words of the same grammatical type.
+3. Provide a concise grammar explanation in Vietnamese.
+4. Provide the full Vietnamese translation of the sentence.
 
-1. Randomly hide one word using a blank (____).
-2. Provide four multiple choice options (A, B, C, D), with only one correct answer (the original word). The other three options should be plausible but incorrect.
-3. Then, explain the grammar of the missing word in Vietnamese (its part of speech, role in the sentence, and position).
-4. Translate the full original sentence into Vietnamese.
-Do not include any explanations or extra text beyond the requested content.`;
+Return the result ONLY as a single, raw JSON object with the following structure. Do not include any extra text, markdown formatting like \`\`\`json, or explanations outside of the JSON object itself.
+{
+  "question_sentence": "The sentence with '_____' in place of the correct word.",
+  "options": ["correct_word", "distractor1", "distractor2", "distractor3"],
+  "correct_answer": "the_correct_word_in_lowercase",
+  "grammar_explanation": "Your Vietnamese grammar explanation here.",
+  "translation": "Your Vietnamese translation here."
+}`;
 };
 
 // ========================================================================
-// == HÀM PHÂN TÍCH MỚI, VIẾT LẠI DỰA TRÊN VÍ DỤ CỦA BẠN ==
+// == HÀM PHÂN TÍCH MỚI: Chỉ tìm và parse JSON, rất ổn định ==
 // ========================================================================
-const parseAIResponse = (rawText, originalSentence) => {
-  const normalizeString = (str) => str.toLowerCase().replace(/[^a-z0-9\s]/g, '');
-  const lines = rawText.split('\n');
-
-  let question_sentence = '';
-  const options = [];
-  let grammar_explanation = '';
-  let translation = '';
-
-  const optionRegex = /^\s*[A-D][.)]\s(.+)/i;
-  const grammarHeaderRegex = /ngữ pháp/i;
-  const translationHeaderRegex = /dịch/i;
-
-  let currentSection = ''; // Theo dõi đang ở phần nào: grammar hay translation
-
-  for (const line of lines) {
-    const trimmedLine = line.trim();
-    const optionMatch = trimmedLine.match(optionRegex);
-
-    if (trimmedLine.includes('____')) {
-      question_sentence = trimmedLine;
-    } else if (optionMatch) {
-      options.push(optionMatch[1].trim());
-    } else if (grammarHeaderRegex.test(trimmedLine)) {
-      currentSection = 'grammar';
-    } else if (translationHeaderRegex.test(trimmedLine)) {
-      currentSection = 'translation';
-    } else if (trimmedLine) { // Nếu dòng có nội dung
-      if (currentSection === 'grammar') {
-        grammar_explanation += (grammar_explanation ? '\n' : '') + trimmedLine;
-      } else if (currentSection === 'translation') {
-        translation += (translation ? ' ' : '') + trimmedLine;
-      }
+const parseAIResponse = (rawText) => {
+  try {
+    // Tìm khối JSON đầu tiên trong chuỗi trả về
+    const jsonMatch = rawText.match(/{[\s\S]*}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
     }
-  }
-
-  // Xử lý trường hợp không tìm thấy đủ thông tin
-  if (options.length < 4 || !question_sentence) {
-    console.error("Parser failed: Could not find all required parts.", { question_sentence, options });
+    return null;
+  } catch (error) {
+    console.error("JSON parsing error:", error);
     return null;
   }
-
-  // Suy luận đáp án đúng
-  let correct_answer = '';
-  const normalizedOriginalSentence = normalizeString(originalSentence);
-  for (const option of options) {
-    // Thử thay thế cả dấu cách để xử lý các từ ghép
-    const reconstructedSentence = question_sentence.replace(' ____ ', ` ${option} `).replace('____ ', `${option} `).replace(' ____', ` ${option}`);
-    if (normalizeString(reconstructedSentence) === normalizedOriginalSentence) {
-      correct_answer = option;
-      break;
-    }
-  }
-
-  if (!correct_answer) {
-    console.warn("Could not deduce correct answer by substitution.");
-    return null; // Trả về null nếu không thể xác định đáp án đúng
-  }
-
-  return {
-    question_sentence,
-    options: options.sort(() => Math.random() - 0.5),
-    correct_answer: correct_answer.toLowerCase(),
-    grammar_explanation,
-    translation,
-  };
 };
 
 
@@ -97,7 +54,7 @@ const PracticeTab = () => {
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [error, setError] = useState(null);
 
-  const fetchAndProcessQuestion = useCallback(async () => {
+  const fetchAndProcessQuestion = useCallback(async (retryCount = 3) => {
     if (sentenceData.length === 0) {
       setIsLoading(false);
       return;
@@ -112,24 +69,38 @@ const PracticeTab = () => {
       const sentenceObject = sentenceData[randomIndex];
       const originalSentence = sentenceObject.originalText;
 
-      const prompt = createNewPrompt(originalSentence);
+      const prompt = createQuestionPrompt(originalSentence);
       const rawResponse = await callOpenRouterAPI(prompt, selectedModel);
       
-      const questionData = parseAIResponse(rawResponse, originalSentence);
+      const questionData = parseAIResponse(rawResponse);
       
-      if (questionData) {
+      if (questionData && questionData.options && questionData.correct_answer) {
+        // Tự sửa lỗi và xáo trộn đáp án
+        const correctAnswerLower = questionData.correct_answer.toLowerCase();
+        if (!questionData.options.map(o => o.toLowerCase()).includes(correctAnswerLower)) {
+            questionData.options[0] = questionData.correct_answer;
+        }
+        questionData.options = questionData.options.sort(() => Math.random() - 0.5);
+        
         setCurrentQuestion(questionData);
       } else {
-        throw new Error("Failed to parse AI response. Retrying with a new question.");
+        throw new Error("AI response was not in the correct JSON format.");
       }
 
     } catch (err) {
-      console.error("Error in fetchAndProcessQuestion:", err);
-      setError(err.message);
-      // Nếu có lỗi, tự động thử lại sau một khoảng ngắn
-      setTimeout(() => fetchAndProcessQuestion(), 500);
+      console.error(`Error fetching/parsing question (attempt ${4 - retryCount}):`, err);
+      if (retryCount > 1) {
+        // Nếu lỗi, tự động thử lại với một câu khác
+        fetchAndProcessQuestion(retryCount - 1);
+      } else {
+        setError("AI is not responding correctly. Please try again later.");
+        setIsLoading(false);
+      }
     } finally {
-      setIsLoading(false);
+      // Chỉ tắt loading nếu không có retry
+      if (retryCount <= 1) {
+        setIsLoading(false);
+      }
     }
   }, [sentenceData, selectedModel]);
 
@@ -159,7 +130,7 @@ const PracticeTab = () => {
   if (error) {
     return (
         <div className="processing-container">
-            <p>Rất tiếc, đã có lỗi xảy ra khi tạo câu hỏi.</p>
+            <p>Rất tiếc, đã có lỗi xảy ra.</p>
             <p><i>{error}</i></p>
             <Button onClick={handleNextQuestion}>Thử lại</Button>
         </div>
