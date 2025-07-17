@@ -106,8 +106,18 @@ const PracticeTab = () => {
 
     try {
       const prompt = promptMap[numBlanks](sentenceObject.originalText);
-      // Truyền thêm max_tokens: 1000 vào API
-      const rawResponse = await callOpenRouterAPI(prompt, selectedModel, { max_tokens: 1000 });
+      let rawResponse;
+      try {
+        rawResponse = await callOpenRouterAPI(prompt, selectedModel, { max_tokens: 1000 });
+      } catch (err) {
+        // Nếu lỗi quota hoặc hết dung lượng, thử lại với model miễn phí
+        if (err?.message?.toLowerCase().includes('quota') || err?.message?.toLowerCase().includes('limit')) {
+          // Thay bằng model miễn phí, ví dụ 'gpt-3.5-turbo'
+          rawResponse = await callOpenRouterAPI(prompt, 'gpt-3.5-turbo', { max_tokens: 1000 });
+        } else {
+          throw err;
+        }
+      }
       const questionData = JSON.parse(rawResponse.match(/{[\s\S]*}/)[0]);
       if (questionData && questionData.options && questionData.correct_answers) {
         setCurrentQuestion(questionData);
@@ -115,7 +125,7 @@ const PracticeTab = () => {
         throw new Error("AI không trả về dữ liệu hợp lệ.");
       }
     } catch (err) {
-      setError("AI không phản hồi đúng. Vui lòng thử lại.");
+      setError("AI không phản hồi đúng hoặc đã hết quota. Đang thử lại với mô hình miễn phí.");
     } finally {
       setIsLoading(false);
     }
