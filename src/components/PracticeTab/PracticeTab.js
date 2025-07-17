@@ -1,7 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { AppContext } from '../../context/AppContext';
 import { callOpenRouterAPI } from '../../api/openRouterAPI';
-import Question from './Question';
 import Feedback from './Feedback';
 import Button from '../common/Button';
 import './PracticeTab.css';
