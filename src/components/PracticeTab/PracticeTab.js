@@ -106,7 +106,8 @@ const PracticeTab = () => {
 
     try {
       const prompt = promptMap[numBlanks](sentenceObject.originalText);
-      const rawResponse = await callOpenRouterAPI(prompt, selectedModel);
+      // Truyền thêm max_tokens: 1000 vào API
+      const rawResponse = await callOpenRouterAPI(prompt, selectedModel, { max_tokens: 1000 });
       const questionData = JSON.parse(rawResponse.match(/{[\s\S]*}/)[0]);
       if (questionData && questionData.options && questionData.correct_answers) {
         setCurrentQuestion(questionData);
