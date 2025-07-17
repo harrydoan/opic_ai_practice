@@ -60,6 +60,12 @@ Only output the question and the answer. Do not include any introductions, label
   };
 
   const models = [
+    // Các model miễn phí của OpenRouter
+    { id: 'gpt-3.5-turbo', name: 'OpenAI: GPT-3.5 Turbo (Miễn phí)' },
+    { id: 'openchat/openchat-3.5-0106', name: 'OpenChat: OpenChat 3.5 (Miễn phí)' },
+    { id: 'nous-hermes-2-vision', name: 'Nous Hermes 2 Vision (Miễn phí)' },
+    { id: 'mistral/mistral-small', name: 'Mistral: Mistral Small (Miễn phí)' },
+    // Các model trả phí phổ biến
     { id: 'openai/gpt-4o-mini', name: 'OpenAI: GPT-4o Mini (Cân bằng)' },
     { id: 'google/gemini-flash-1.5', name: 'Google: Gemini 1.5 Flash (Nhanh)' },
     { id: 'anthropic/claude-3.5-sonnet', name: 'Anthropic: Claude 3.5 Sonnet (Mạnh mẽ)' },
