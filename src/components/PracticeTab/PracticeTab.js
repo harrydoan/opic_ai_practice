@@ -81,45 +81,46 @@ const PracticeTab = () => {
     return deckArr[randomIdx];
   };
 
+  // Tách fetchQuestion ra ngoài để có thể gọi lại khi gặp lỗi
+  const fetchQuestion = async () => {
+    setIsLoading(true);
+    setIsAnswered(false);
+    setSelectedAnswers([]);
+    setError(null);
+
+    if (!deck.length) {
+      const newDeck = shuffleArray(Array.from(Array(sentenceData.length).keys()));
+      setDeck(newDeck);
+      setCurrentIndex(0);
+      setIsLoading(false);
+      return;
+    }
+
+    const sentenceIdx = typeof currentIndex === 'number' ? deck[currentIndex] : pickRandomIndex(deck);
+    const sentenceObject = sentenceData[sentenceIdx];
+    if (!sentenceObject) {
+      setError("Không tìm thấy câu hỏi.");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const prompt = promptMap[numBlanks](sentenceObject.originalText);
+      const rawResponse = await callOpenRouterAPI(prompt, selectedModel);
+      const questionData = JSON.parse(rawResponse.match(/{[\s\S]*}/)[0]);
+      if (questionData && questionData.options && questionData.correct_answers) {
+        setCurrentQuestion(questionData);
+      } else {
+        throw new Error("AI không trả về dữ liệu hợp lệ.");
+      }
+    } catch (err) {
+      setError("AI không phản hồi đúng. Vui lòng thử lại.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchQuestion = async () => {
-      setIsLoading(true);
-      setIsAnswered(false);
-      setSelectedAnswers([]);
-      setError(null);
-
-      if (!deck.length) {
-        const newDeck = shuffleArray(Array.from(Array(sentenceData.length).keys()));
-        setDeck(newDeck);
-        setCurrentIndex(0);
-        setIsLoading(false);
-        return;
-      }
-
-      const sentenceIdx = typeof currentIndex === 'number' ? deck[currentIndex] : pickRandomIndex(deck);
-      const sentenceObject = sentenceData[sentenceIdx];
-      if (!sentenceObject) {
-        setError("Không tìm thấy câu hỏi.");
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const prompt = promptMap[numBlanks](sentenceObject.originalText);
-        const rawResponse = await callOpenRouterAPI(prompt, selectedModel);
-        const questionData = JSON.parse(rawResponse.match(/{[\s\S]*}/)[0]);
-        if (questionData && questionData.options && questionData.correct_answers) {
-          setCurrentQuestion(questionData);
-        } else {
-          throw new Error("AI không trả về dữ liệu hợp lệ.");
-        }
-      } catch (err) {
-        setError("AI không phản hồi đúng. Vui lòng thử lại.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     if (sentenceData.length > 0 && deck.length > 0 && (typeof currentIndex === 'number')) {
       fetchQuestion();
     }
@@ -163,7 +164,7 @@ const PracticeTab = () => {
       <div className="processing-container">
         <p>An error occurred:</p>
         <p><i>{error}</i></p>
-        <Button onClick={handleNextQuestion}>Try Again</Button>
+        <Button onClick={fetchQuestion}>Thử lại</Button>
       </div>
     );
   }
