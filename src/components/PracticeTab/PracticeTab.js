@@ -49,50 +49,6 @@ Only output these four parts and nothing else.
 }`,
 };
 
-const parseAIResponse = (rawText, numBlanks) => {
-  try {
-    let textToParse = rawText;
-    const markdownMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-    if (markdownMatch && markdownMatch[1]) {
-      textToParse = markdownMatch[1];
-    }
-    // Parse custom format (not JSON)
-    // Expect: question_sentence, options, correct_answers, grammar_explanation, translation
-    const questionSentenceMatch = textToParse.match(/Sentence with blanks:[\\s\\S]*?([^\n]+)\n/);
-    const optionsMatch = textToParse.match(/Multiple choice options:[\\s\\S]*?([A-F].*?)(?:\\n\\n|\\nCorrect answers:)/s);
-    const correctAnswersMatch = textToParse.match(/Correct answers?:[\\s\\S]*?([A-F].*?)(?:\\n|$)/);
-    const grammarMatch = textToParse.match(/Grammar explanation \\(word:.*?\\):\\n([\\s\\S]*?)\\nTranslation:/);
-    const translationMatch = textToParse.match(/Translation:[\\s\\S]*?([^\n]+)/);
-
-    // Parse options
-    let options = [];
-    if (optionsMatch && optionsMatch[1]) {
-      options = optionsMatch[1].split('\n').map(line => {
-        const m = line.match(/^[A-F]\\.\\s*(.*)$/);
-        return m ? m[1].trim() : null;
-      }).filter(Boolean);
-    }
-    // Parse correct answers
-    let correctAnswers = [];
-    if (correctAnswersMatch && correctAnswersMatch[1]) {
-      correctAnswers = correctAnswersMatch[1].split(',').map(ans => {
-        // e.g. "A. I" => "I"
-        const m = ans.match(/[A-F]\\.\\s*(.*)/);
-        return m ? m[1].trim() : ans.trim();
-      });
-    }
-
-    return {
-      question_sentence: questionSentenceMatch ? questionSentenceMatch[1].trim() : '',
-      options,
-      correct_answers: correctAnswers,
-      grammar_explanation: grammarMatch ? grammarMatch[1].trim() : '',
-      translation: translationMatch ? translationMatch[1].trim() : ''
-    };
-  } catch (error) {
-    return null;
-  }
-};
 
 const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
 
