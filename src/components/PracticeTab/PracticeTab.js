@@ -81,8 +81,8 @@ const PracticeTab = () => {
     return deckArr[randomIdx];
   };
 
-  // Tách fetchQuestion ra ngoài để có thể gọi lại khi gặp lỗi
-  const fetchQuestion = async () => {
+  // Sử dụng useCallback để tránh lỗi missing dependency
+  const fetchQuestion = React.useCallback(async () => {
     setIsLoading(true);
     setIsAnswered(false);
     setSelectedAnswers([]);
@@ -118,13 +118,13 @@ const PracticeTab = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [deck, currentIndex, sentenceData, selectedModel, numBlanks]);
 
   useEffect(() => {
     if (sentenceData.length > 0 && deck.length > 0 && (typeof currentIndex === 'number')) {
       fetchQuestion();
     }
-  }, [currentIndex, deck, sentenceData, selectedModel, numBlanks]);
+  }, [currentIndex, deck, sentenceData, selectedModel, numBlanks, fetchQuestion]);
 
   const handleAnswerSelect = (answer) => {
     if (isAnswered) return;
