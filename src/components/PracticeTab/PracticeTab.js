@@ -11,19 +11,42 @@ const promptMap = {
 2. Provide six multiple choice options labeled A–F, in which exactly one is the correct word to fill in the blank. The other five must be plausible but incorrect.
 3. Explain the grammar of the hidden word in Vietnamese (including its part of speech, role in the sentence, and position).
 4. Translate the full original sentence into Vietnamese.
-Only output these four parts and nothing else.`,
+Only output these four parts and nothing else.
+{
+"question_sentence": "The sentence with one blank (____)",
+"options": ["option1", "option2", "option3", "option4", "option5", "option6"],
+"correct_answers": ["the_correct_word"],
+"grammar_explanation": "...",
+"translation": "..."
+}`,
+
   2: (sentence) => `Given the sentence: "${sentence}"
 1. Randomly hide two different words from the sentence using blanks (____).
 2. Provide six multiple choice options labeled A–F, in which exactly two are the correct words to fill in the blanks. The other four must be plausible but incorrect.
 3. Choose one of the hidden words and explain its grammar in Vietnamese (including its part of speech, role in the sentence, and position).
 4. Translate the full original sentence into Vietnamese.
-Only output these four parts and nothing else.`,
+Only output these four parts and nothing else.
+{
+"question_sentence": "The sentence with one blank (____)",
+"options": ["option1", "option2", "option3", "option4", "option5", "option6"],
+"correct_answers": ["the_correct_word"],
+"grammar_explanation": "...",
+"translation": "..."
+}`,
+
   3: (sentence) => `Given the sentence: "${sentence}"
 1. Randomly hide three different words from the sentence using blanks (____). Do not hide the same combination of words every time the prompt is run.
 2. Provide six multiple choice options labeled A–F, in which exactly three are the correct words to fill in the blanks. The other three must be plausible but incorrect.
 3. Choose one of the hidden words and explain its grammar in Vietnamese (including its part of speech, role in the sentence, and position).
 4. Translate the full original sentence into Vietnamese.
-Only output these four parts and nothing else.`
+Only output these four parts and nothing else.
+{
+"question_sentence": "The sentence with one blank (____)",
+"options": ["option1", "option2", "option3", "option4", "option5", "option6"],
+"correct_answers": ["the_correct_word"],
+"grammar_explanation": "...",
+"translation": "..."
+}`,
 };
 
 const parseAIResponse = (rawText, numBlanks) => {
@@ -77,6 +100,7 @@ const PracticeTab = () => {
   const { sentenceData, selectedModel } = useContext(AppContext);
 
   const [numBlanks, setNumBlanks] = useState(1);
+  const [pendingNumBlanks, setPendingNumBlanks] = useState(1);
   const [deck, setDeck] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(null);
 
@@ -90,6 +114,8 @@ const PracticeTab = () => {
     if (sentenceData.length > 0) {
       setDeck(shuffleArray(Array.from(Array(sentenceData.length).keys())));
       setCurrentIndex(0);
+      setNumBlanks(1); // mặc định 1 từ
+      setPendingNumBlanks(1);
     }
   }, [sentenceData]);
 
@@ -125,8 +151,7 @@ const PracticeTab = () => {
       try {
         const prompt = promptMap[numBlanks](sentenceObject.originalText);
         const rawResponse = await callOpenRouterAPI(prompt, selectedModel);
-        const questionData = parseAIResponse(rawResponse, numBlanks);
-
+        const questionData = JSON.parse(rawResponse.match(/{[\s\S]*}/)[0]);
         if (questionData && questionData.options && questionData.correct_answers) {
           setCurrentQuestion(questionData);
         } else {
@@ -195,16 +220,18 @@ const PracticeTab = () => {
   const blanksSelector = (
     <div style={{ marginBottom: 16 }}>
       <label>Chọn số từ che: </label>
-      {[1,2,3].map(n => (
-        <Button
-          key={n}
-          onClick={() => setNumBlanks(n)}
-          className={numBlanks === n ? 'selected' : ''}
-          style={{ margin: '0 8px' }}
-        >
-          {n} từ
-        </Button>
-      ))}
+      <select value={pendingNumBlanks} onChange={e => setPendingNumBlanks(Number(e.target.value))} style={{ margin: '0 8px' }}>
+        {[1,2,3].map(n => (
+          <option key={n} value={n}>{n} từ</option>
+        ))}
+      </select>
+      <Button
+        onClick={() => setNumBlanks(pendingNumBlanks)}
+        style={{ marginLeft: 8 }}
+        disabled={pendingNumBlanks === numBlanks}
+      >
+        Tiếp tục với số từ che mới
+      </Button>
     </div>
   );
 
