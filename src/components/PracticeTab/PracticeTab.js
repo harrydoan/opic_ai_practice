@@ -5,48 +5,22 @@ import Feedback from './Feedback';
 import Button from '../common/Button';
 import './PracticeTab.css';
 
-const promptMap = {
-  1: (sentence) => `Given the sentence: "${sentence}"
-1. Randomly hide one word from the sentence using a blank (____).
-2. Provide six multiple choice options labeled A–F, in which exactly one is the correct word to fill in the blank. The other five must be plausible but incorrect.
-3. Explain the grammar of the hidden word in Vietnamese (including its part of speech, role in the sentence, and position).
-4. Translate the full original sentence into Vietnamese.
-Only output these four parts and nothing else.
-{
-"question_sentence": "The sentence with one blank (____)",
-"options": ["option1", "option2", "option3", "option4", "option5", "option6"],
-"correct_answers": ["the_correct_word"],
-"grammar_explanation": "...",
-"translation": "..."
-}`,
 
-  2: (sentence) => `Given the sentence: "${sentence}"
-1. Randomly hide two different words from the sentence using blanks (____).
-2. Provide six multiple choice options labeled A–F, in which exactly two are the correct words to fill in the blanks. The other four must be plausible but incorrect.
+// Prompt động cho số từ che 1, 2, 3
+const getPracticePrompt = (sentence, numBlanks) => {
+  return `Given the sentence: "${sentence}"
+1. Randomly hide ${numBlanks} different word${numBlanks > 1 ? 's' : ''} from the sentence using blanks (____). Do not hide the same combination every time.
+2. Provide six multiple choice options labeled A–F, in which exactly ${numBlanks} are the correct words to fill in the blanks. The other options must be plausible but incorrect.
 3. Choose one of the hidden words and explain its grammar in Vietnamese (including its part of speech, role in the sentence, and position).
 4. Translate the full original sentence into Vietnamese.
 Only output these four parts and nothing else.
 {
-"question_sentence": "The sentence with one blank (____)",
-"options": ["option1", "option2", "option3", "option4", "option5", "option6"],
-"correct_answers": ["the_correct_word"],
-"grammar_explanation": "...",
-"translation": "..."
-}`,
-
-  3: (sentence) => `Given the sentence: "${sentence}"
-1. Randomly hide three different words from the sentence using blanks (____). Do not hide the same combination of words every time the prompt is run.
-2. Provide six multiple choice options labeled A–F, in which exactly three are the correct words to fill in the blanks. The other three must be plausible but incorrect.
-3. Choose one of the hidden words and explain its grammar in Vietnamese (including its part of speech, role in the sentence, and position).
-4. Translate the full original sentence into Vietnamese.
-Only output these four parts and nothing else.
-{
-"question_sentence": "The sentence with one blank (____)",
-"options": ["option1", "option2", "option3", "option4", "option5", "option6"],
-"correct_answers": ["the_correct_word"],
-"grammar_explanation": "...",
-"translation": "..."
-}`,
+  "question_sentence": "The sentence with ${numBlanks === 1 ? 'one' : numBlanks === 2 ? 'two' : 'three'} blank${numBlanks > 1 ? 's' : ''} (____)",
+  "options": ["option1", "option2", "option3", "option4", "option5", "option6"],
+  "correct_answers": ["the_correct_word${numBlanks > 1 ? 's' : ''}"],
+  "grammar_explanation": "...",
+  "translation": "..."
+}`;
 };
 
 
@@ -55,8 +29,7 @@ const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
 const PracticeTab = () => {
   const { sentenceData, selectedModel } = useContext(AppContext);
 
-  const [numBlanks, setNumBlanks] = useState(1);
-  const [pendingNumBlanks, setPendingNumBlanks] = useState(1);
+  const [numBlanks, setNumBlanks] = useState(1); // mặc định 1 từ che
   const [deck, setDeck] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(null);
 
@@ -105,14 +78,12 @@ const PracticeTab = () => {
     }
 
     try {
-      const prompt = promptMap[numBlanks](sentenceObject.originalText);
+      const prompt = getPracticePrompt(sentenceObject.originalText, numBlanks);
       let rawResponse;
       try {
-        rawResponse = await callOpenRouterAPI(prompt, selectedModel, { max_tokens: 1000 });
+        rawResponse = await callOpenRouterAPI(prompt, selectedModel || 'gpt-3.5-turbo', { max_tokens: 1000 });
       } catch (err) {
-        // Nếu lỗi quota hoặc hết dung lượng, thử lại với model miễn phí
         if (err?.message?.toLowerCase().includes('quota') || err?.message?.toLowerCase().includes('limit')) {
-          // Thay bằng model miễn phí, ví dụ 'gpt-3.5-turbo'
           rawResponse = await callOpenRouterAPI(prompt, 'gpt-3.5-turbo', { max_tokens: 1000 });
         } else {
           throw err;
@@ -186,20 +157,19 @@ const PracticeTab = () => {
 
   // UI chọn số từ che
   const blanksSelector = (
-    <div style={{ marginBottom: 16 }}>
-      <label>Chọn số từ che: </label>
-      <select value={pendingNumBlanks} onChange={e => setPendingNumBlanks(Number(e.target.value))} style={{ margin: '0 8px' }}>
-        {[1,2,3].map(n => (
-          <option key={n} value={n}>{n} từ</option>
-        ))}
-      </select>
-      <Button
-        onClick={() => setNumBlanks(pendingNumBlanks)}
-        style={{ marginLeft: 8 }}
-        disabled={pendingNumBlanks === numBlanks}
-      >
-        Tiếp tục với số từ che mới
-      </Button>
+    <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+      <label style={{ fontWeight: 500 }}>Chọn số từ che:</label>
+      {[1,2,3].map(n => (
+        <Button
+          key={n}
+          onClick={() => setNumBlanks(n)}
+          className={numBlanks === n ? 'practice-btn selected' : 'practice-btn'}
+          style={{ minWidth: 48, borderRadius: 8, fontWeight: 600 }}
+        >
+          {n}
+        </Button>
+      ))}
+      <span style={{ color: '#888', marginLeft: 8 }}>(Mặc định: 1 từ)</span>
     </div>
   );
 
@@ -207,36 +177,37 @@ const PracticeTab = () => {
   return (
     <div className="practice-tab-container">
       {blanksSelector}
-      <div className="practice-question" style={{ marginBottom: 16 }}>
+      <div className="practice-question" style={{ marginBottom: 16, fontSize: '1.15rem', textAlign: 'center', fontWeight: 500 }}>
         <strong>{currentQuestion.question_sentence}</strong>
       </div>
-      <div className="practice-options" style={{ marginBottom: 16 }}>
+      <div className="practice-options answers-grid" style={{ marginBottom: 16 }}>
         {currentQuestion.options.map((option, idx) => (
-          <Button
+          <button
             key={option}
             className={
-              isAnswered
+              'answer-btn' +
+              (isAnswered
                 ? currentQuestion.correct_answers.includes(option)
-                  ? 'practice-btn correct'
+                  ? ' correct'
                   : selectedAnswers.includes(option)
-                  ? 'practice-btn incorrect'
-                  : 'practice-btn disabled'
+                  ? ' incorrect'
+                  : ' disabled'
                 : selectedAnswers.includes(option)
-                ? 'practice-btn selected'
-                : 'practice-btn'
+                ? ' selected'
+                : '')
             }
             onClick={() => handleAnswerSelect(option)}
             disabled={isAnswered}
-            style={{ minWidth: 64, margin: '8px', borderRadius: 12 }}
           >
             {String.fromCharCode(65 + idx)}. {option}
-          </Button>
+          </button>
         ))}
       </div>
       {!isAnswered && (
         <Button
           onClick={handleSubmitAnswers}
           disabled={selectedAnswers.length !== numBlanks}
+          style={{ alignSelf: 'center', minWidth: 160, fontWeight: 600 }}
         >
           Kiểm tra đáp án
         </Button>
@@ -255,7 +226,7 @@ const PracticeTab = () => {
             }}
             isLoading={false}
           />
-          <Button onClick={handleNextQuestion}>
+          <Button onClick={handleNextQuestion} style={{ alignSelf: 'center', minWidth: 160, fontWeight: 600 }}>
             Next Question →
           </Button>
         </div>
