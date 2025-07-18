@@ -262,15 +262,13 @@ const PracticeTab = () => {
           aria-label="Nghe câu hoàn chỉnh"
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
           onClick={() => {
-            // Tìm lại câu gốc từ sentenceData
+            // Lấy đúng index hiện tại trong deck để lấy câu gốc
             let fullSentence = '';
-            if (sentenceData && sentenceData.length > 0 && currentQuestion) {
-              // Tìm câu có chứa tất cả đáp án đúng (từ che)
-              const found = sentenceData.find(sen => {
-                // So sánh số từ đúng với số từ che
-                return currentQuestion.correct_answers.every(word => sen.originalText.includes(word));
-              });
-              fullSentence = found ? found.originalText : '';
+            if (sentenceData && deck && typeof currentIndex === 'number' && deck.length > 0) {
+              const idx = deck[currentIndex];
+              if (typeof idx === 'number' && sentenceData[idx]) {
+                fullSentence = sentenceData[idx].originalText;
+              }
             }
             speakText(fullSentence);
           }}
