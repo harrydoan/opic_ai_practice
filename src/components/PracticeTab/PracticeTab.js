@@ -29,7 +29,8 @@ const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
 const PracticeTab = () => {
   const { sentenceData, selectedModel } = useContext(AppContext);
 
-  const [numBlanks, setNumBlanks] = useState(1); // mặc định 1 từ che
+  const [numBlanks, setNumBlanks] = useState(1); // số từ che hiện tại
+  const [pendingNumBlanks, setPendingNumBlanks] = useState(1); // số từ che sẽ dùng cho câu tiếp theo
   const [deck, setDeck] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(null);
 
@@ -44,6 +45,7 @@ const PracticeTab = () => {
       setDeck(shuffleArray(Array.from(Array(sentenceData.length).keys())));
       setCurrentIndex(0);
       setNumBlanks(1); // mặc định 1 từ
+      setPendingNumBlanks(1);
     }
   }, [sentenceData]);
 
@@ -113,13 +115,15 @@ const PracticeTab = () => {
       ? selectedAnswers.filter(a => a !== answer)
       : [...selectedAnswers, answer];
     setSelectedAnswers(newSelected);
-  };
-
-  const handleSubmitAnswers = () => {
-    setIsAnswered(true);
+    // Nếu đã chọn đủ số đáp án, tự động kiểm tra
+    if (newSelected.length === numBlanks) {
+      setTimeout(() => setIsAnswered(true), 200); // delay nhẹ để UX mượt
+    }
   };
 
   const handleNextQuestion = () => {
+    // Khi sang câu mới, cập nhật số từ che = pendingNumBlanks
+    setNumBlanks(pendingNumBlanks);
     if (deck.length <= 1) {
       setDeck(shuffleArray(Array.from(Array(sentenceData.length).keys())));
       setCurrentIndex(0);
@@ -161,14 +165,16 @@ const PracticeTab = () => {
       {[1,2,3].map(n => (
         <Button
           key={n}
-          onClick={() => setNumBlanks(n)}
-          className={numBlanks === n ? 'practice-btn selected' : 'practice-btn'}
+          onClick={() => setPendingNumBlanks(n)}
+          className={pendingNumBlanks === n ? 'practice-btn selected' : 'practice-btn'}
           style={{ minWidth: 48, borderRadius: 8, fontWeight: 600 }}
         >
           {n}
         </Button>
       ))}
-      <span style={{ color: '#888', marginLeft: 8 }}>(Mặc định: 1 từ)</span>
+      <span style={{ color: '#888', marginLeft: 8 }}>
+        Đang sử dụng: <b>{numBlanks} từ che</b>
+      </span>
     </div>
   );
 
@@ -196,21 +202,12 @@ const PracticeTab = () => {
                 : '')
             }
             onClick={() => handleAnswerSelect(option)}
-            disabled={isAnswered}
+            disabled={isAnswered || (selectedAnswers.length >= numBlanks && !selectedAnswers.includes(option))}
           >
             {String.fromCharCode(65 + idx)}. {option}
           </button>
         ))}
       </div>
-      {!isAnswered && (
-        <Button
-          onClick={handleSubmitAnswers}
-          disabled={selectedAnswers.length !== numBlanks}
-          style={{ alignSelf: 'center', minWidth: 160, fontWeight: 600 }}
-        >
-          Kiểm tra đáp án
-        </Button>
-      )}
       {isAnswered && (
         <div className="feedback-and-next">
           <Feedback

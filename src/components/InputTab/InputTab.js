@@ -23,8 +23,10 @@ const cleanOpicResponse = (rawText) => {
   return cleanedLines.join('\n').trim();
 };
 
+
 const InputTab = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedLevel, setSelectedLevel] = useState('AL');
   const { 
     setSentenceData,
     selectedModel, setSelectedModel, 
@@ -34,10 +36,11 @@ const InputTab = () => {
 
   const handleFetchData = async () => {
     setIsLoading(true);
-    const OPIC_PROMPT = `Give me one OPIC question and a sample answer at the AL (Advanced Low) level.
-The answer should be 150–200 words, natural, fluent, and include personal details and storytelling.
-Use informal spoken English.
-Only output the question and the answer. Do not include any introductions, labels, titles, or extra text.`;
+    let levelText = '';
+    if (selectedLevel === 'IM') levelText = 'Intermediate Mid';
+    else if (selectedLevel === 'IH') levelText = 'Intermediate High';
+    else levelText = 'Advanced Low';
+    const OPIC_PROMPT = `Give me one OPIC question and a sample answer at the ${selectedLevel} (${levelText}) level.\nThe answer should be 150–200 words, natural, fluent, and include personal details and storytelling.\nUse informal spoken English.\nOnly output the question and the answer. Do not include any introductions, labels, titles, or extra text.`;
     const result = await callOpenRouterAPI(OPIC_PROMPT, selectedModel || 'gpt-3.5-turbo');
     if (result && result.error) {
       let errorMsg = `Lỗi khi kết nối AI: ${result.message}`;
@@ -93,6 +96,14 @@ Only output the question and the answer. Do not include any introductions, label
         <label htmlFor="model-select">Chọn Model AI:</label>
         <select id="model-select" value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}>
           {models.map(model => <option key={model.id} value={model.id}>{model.name}</option>)}
+        </select>
+      </div>
+      <div className="level-selector">
+        <label htmlFor="level-select">Chọn Level:</label>
+        <select id="level-select" value={selectedLevel} onChange={e => setSelectedLevel(e.target.value)}>
+          <option value="IM">IM (Intermediate Mid)</option>
+          <option value="IH">IH (Intermediate High)</option>
+          <option value="AL">AL (Advanced Low)</option>
         </select>
       </div>
       <textarea value={opicText} onChange={(e) => setOpicText(e.target.value)} rows="8" placeholder="Dán đoạn văn vào đây..."></textarea>
