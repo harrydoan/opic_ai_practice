@@ -22,7 +22,7 @@ const cleanOpicResponse = (rawText) => {
     return cleanedLine;
   });
   return cleanedLines.join('\n').trim();
-// End of InputTab component
+};
 
 const InputTab = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -141,8 +141,6 @@ const InputTab = () => {
       )}
     </div>
   );
-};
-
 };
 
 export default InputTab;
