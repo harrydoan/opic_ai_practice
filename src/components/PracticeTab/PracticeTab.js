@@ -168,7 +168,11 @@ const PracticeTab = () => {
           const res = await callOpenRouterAPI(explainPrompt, selectedModel || 'gpt-3.5-turbo', { max_tokens: 300 });
           let obj = {};
           try {
-            obj = JSON.parse(res.match(/{[\s\S]*}/)[0]);
+            // Robustly extract JSON object from response
+            const match = res && typeof res === 'string' ? res.match(/{[\s\S]*}/) : null;
+            if (match && match[0]) {
+              obj = JSON.parse(match[0]);
+            }
           } catch (err) {
             obj = {};
           }
@@ -179,6 +183,9 @@ const PracticeTab = () => {
           translation = '';
         }
       }
+      // Always set fallback values to prevent undefined
+      grammar_explanation = typeof grammar_explanation === 'string' ? grammar_explanation : '';
+      translation = typeof translation === 'string' ? translation : '';
       setCurrentQuestion(q => ({ ...q, grammar_explanation, translation }));
       setTimeout(() => {
         setIsAnswered(true);
