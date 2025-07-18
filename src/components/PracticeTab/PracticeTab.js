@@ -8,16 +8,21 @@ import './PracticeTab.css';
 
 // Prompt động cho số từ che 1, 2, 3
 const getPracticePrompt = (sentence, numBlanks) => {
+  // Yêu cầu AI trả về đúng số từ che, hiển thị rõ vị trí các chỗ che bằng ____
+  // correct_answers là mảng chứa đúng số từ bị che, options gồm 6 đáp án (số đáp án đúng = numBlanks)
+  // Ví dụ: "I ____ to the ____ every ____" với 3 từ che
   return `Given the sentence: "${sentence}"
-1. Randomly hide ${numBlanks} different word${numBlanks > 1 ? 's' : ''} from the sentence using blanks (____). Do not hide the same combination every time.
-2. Provide six multiple choice options labeled A–F, in which exactly ${numBlanks} are the correct words to fill in the blanks. The other options must be plausible but incorrect.
-3. Choose one of the hidden words and explain its grammar in Vietnamese (including its part of speech, role in the sentence, and position).
-4. Translate the full original sentence into Vietnamese.
-Only output these four parts and nothing else.
+1. Randomly select and hide exactly ${numBlanks} different words from the sentence. Replace each hidden word with a blank (____) at its original position in the sentence. Do NOT hide the same combination every time. The blanks must be in the correct positions of the original words.
+2. Provide exactly 6 answer options (A–F) in a JSON array called "options". Exactly ${numBlanks} of these must be the correct words for the blanks, the rest must be plausible but incorrect.
+3. In a JSON array called "correct_answers", list the correct words for the blanks in the order they appear in the sentence.
+4. In "question_sentence", return the sentence with the correct number of blanks (____) in the correct positions.
+5. In "grammar_explanation", pick ONE of the hidden words and explain its grammar in Vietnamese (bao gồm từ loại, vai trò, vị trí trong câu).
+6. In "translation", translate the full original sentence into Vietnamese.
+Only output a single JSON object with these 4 fields and nothing else:
 {
-  "question_sentence": "The sentence with ${numBlanks === 1 ? 'one' : numBlanks === 2 ? 'two' : 'three'} blank${numBlanks > 1 ? 's' : ''} (____)",
+  "question_sentence": "...", // The sentence with ${numBlanks} blank(s) (____) in the correct positions
   "options": ["option1", "option2", "option3", "option4", "option5", "option6"],
-  "correct_answers": ["the_correct_word${numBlanks > 1 ? 's' : ''}"],
+  "correct_answers": ["word1"${numBlanks > 1 ? ', "word2"' : ''}${numBlanks > 2 ? ', "word3"' : ''}],
   "grammar_explanation": "...",
   "translation": "..."
 }`;
@@ -163,14 +168,14 @@ const PracticeTab = () => {
     <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
       <label style={{ fontWeight: 500 }}>Chọn số từ che:</label>
       {[1,2,3].map(n => (
-        <Button
+        <button
           key={n}
           onClick={() => setPendingNumBlanks(n)}
-          className={pendingNumBlanks === n ? 'practice-btn selected' : 'practice-btn'}
-          style={{ minWidth: 48, borderRadius: 8, fontWeight: 600 }}
+          className={pendingNumBlanks === n ? 'answer-btn selected' : 'answer-btn'}
+          style={{ minWidth: 48, borderRadius: 8, fontWeight: 600, outline: 'none', borderWidth: 2 }}
         >
           {n}
-        </Button>
+        </button>
       ))}
       <span style={{ color: '#888', marginLeft: 8 }}>
         Đang sử dụng: <b>{numBlanks} từ che</b>
