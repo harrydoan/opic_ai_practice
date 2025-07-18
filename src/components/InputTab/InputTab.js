@@ -40,7 +40,13 @@ Use informal spoken English.
 Only output the question and the answer. Do not include any introductions, labels, titles, or extra text.`;
     const result = await callOpenRouterAPI(OPIC_PROMPT, selectedModel || 'gpt-3.5-turbo');
     if (result && result.error) {
-      setOpicText(`Lỗi khi kết nối AI: ${result.message}`);
+      let errorMsg = `Lỗi khi kết nối AI: ${result.message}`;
+      if (result.status === 404 || (result.message && result.message.toLowerCase().includes('no endpoints'))) {
+        errorMsg += '\nModel này hiện không khả dụng. Vui lòng chọn model khác trong danh sách.';
+      } else if (result.status) {
+        errorMsg = `Lỗi khi kết nối AI (mã ${result.status}): ${result.message}`;
+      }
+      setOpicText(errorMsg);
     } else {
       const cleanedText = cleanOpicResponse(result);
       setOpicText(cleanedText);
