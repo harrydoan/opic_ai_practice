@@ -81,14 +81,16 @@ const OrderingTab = () => {
                 <div className="ordering-sentence">{currentSentence}</div>
                 <div className="ordering-options-grid">
                     {options.map(option => {
-                        let btnClass = 'ordering-btn';
+                        let btnClass = 'answer-btn';
                         if (isAnswered) {
                             if (option === correctPosition) btnClass += ' correct';
                             else if (option === selectedAnswer) btnClass += ' incorrect';
                             else btnClass += ' disabled';
+                        } else if (option === selectedAnswer) {
+                            btnClass += ' selected';
                         }
                         return (
-                            <Button
+                            <button
                                 key={option}
                                 className={btnClass}
                                 onClick={() => handleAnswerSelect(option)}
@@ -96,7 +98,7 @@ const OrderingTab = () => {
                                 style={{ minWidth: 64, margin: '8px', borderRadius: 12 }}
                             >
                                 Vị trí {option}
-                            </Button>
+                            </button>
                         );
                     })}
                 </div>
