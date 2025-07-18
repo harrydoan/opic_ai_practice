@@ -261,7 +261,19 @@ const PracticeTab = () => {
         <button
           aria-label="Nghe câu hoàn chỉnh"
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
-          onClick={() => speakText(currentQuestion && currentQuestion.question_sentence ? currentQuestion.question_sentence.replace(/____/g, currentQuestion.correct_answers[0]) : '')}
+          onClick={() => {
+            // Tìm lại câu gốc từ sentenceData
+            let fullSentence = '';
+            if (sentenceData && sentenceData.length > 0 && currentQuestion) {
+              // Tìm câu có chứa tất cả đáp án đúng (từ che)
+              const found = sentenceData.find(sen => {
+                // So sánh số từ đúng với số từ che
+                return currentQuestion.correct_answers.every(word => sen.originalText.includes(word));
+              });
+              fullSentence = found ? found.originalText : '';
+            }
+            speakText(fullSentence);
+          }}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M3 9v6h4l5 5V4L7 9H3z" fill="#4facfe"/>
