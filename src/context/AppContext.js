@@ -5,7 +5,8 @@ export const AppContext = createContext();
 export const AppProvider = ({ children }) => {
   const [activeTab, setActiveTab] = useState('Nhập liệu');
   const [sentenceData, setSentenceData] = useState([]);
-  const [selectedModel, setSelectedModel] = useState('openai/gpt-4o-mini');
+  // Đặt mặc định là model miễn phí nhiều token nhất: gpt-3.5-turbo
+  const [selectedModel, setSelectedModel] = useState('gpt-3.5-turbo');
   const [opicText, setOpicText] = useState('');
   
   // STATE MỚI: Lưu lại thứ tự đúng do người dùng sắp xếp

@@ -75,6 +75,12 @@ Only output the question and the answer. Do not include any introductions, label
     { id: 'openchat/openchat-3.5-0106', name: 'OpenChat: OpenChat 3.5 (Miễn phí)' },
     { id: 'nous-hermes-2-vision', name: 'Nous Hermes 2 Vision (Miễn phí)' },
     { id: 'mistral/mistral-small', name: 'Mistral: Mistral Small (Miễn phí)' },
+    { id: 'google/gemini-flash-1.5', name: 'Google: Gemini Flash 1.5 (Miễn phí)' },
+    { id: 'google/gemini-flash-2', name: 'Google: Gemini Flash 2 (Miễn phí)' },
+    { id: 'xai/grok-1', name: 'Grok 1 (Miễn phí)' },
+    { id: 'xai/grok-1.5', name: 'Grok 1.5 (Miễn phí)' },
+    { id: 'xai/grok-1.5v', name: 'Grok 1.5V (Miễn phí)' },
+    { id: 'xai/grok-4', name: 'Grok 4 (Miễn phí)' },
     // Các model trả phí phổ biến
     { id: 'openai/gpt-4o-mini', name: 'OpenAI: GPT-4o Mini (Cân bằng)' },
     { id: 'google/gemini-flash-1.5', name: 'Google: Gemini 1.5 Flash (Nhanh)' },
