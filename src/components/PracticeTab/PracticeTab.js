@@ -3,6 +3,7 @@ import { AppContext } from '../../context/AppContext';
 import { callOpenRouterAPI } from '../../api/openRouterAPI';
 import Feedback from './Feedback';
 import Button from '../common/Button';
+import { speakText } from '../../utils/speech';
 import './PracticeTab.css';
 
 
@@ -255,8 +256,19 @@ const PracticeTab = () => {
   return (
     <div className="practice-tab-container">
       {blanksSelector}
-      <div className="practice-question" style={{ marginBottom: 16, fontSize: '1.15rem', textAlign: 'center', fontWeight: 500 }}>
+      <div className="practice-question" style={{ marginBottom: 16, fontSize: '1.15rem', textAlign: 'center', fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
         <strong>{currentQuestion.question_sentence}</strong>
+        <button
+          aria-label="Nghe câu hoàn chỉnh"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+          onClick={() => speakText(currentQuestion && currentQuestion.question_sentence ? currentQuestion.question_sentence.replace(/____/g, currentQuestion.correct_answers[0]) : '')}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 9v6h4l5 5V4L7 9H3z" fill="#4facfe"/>
+            <path d="M16.5 12c0-1.77-.77-3.29-2-4.29v8.58c1.23-1 2-2.52 2-4.29z" fill="#4facfe"/>
+            <path d="M14.5 3.97v2.06c3.39.49 6 3.39 6 6.97s-2.61 6.48-6 6.97v2.06c4.01-.51 7-3.86 7-9.03s-2.99-8.52-7-9.03z" fill="#4facfe"/>
+          </svg>
+        </button>
       </div>
       <div className="practice-options answers-grid" style={{ marginBottom: 16 }}>
         {currentQuestion.options.map((option, idx) => (

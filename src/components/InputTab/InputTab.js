@@ -1,4 +1,5 @@
 import React, { useState, useContext } from 'react';
+import { speakText } from '../../utils/speech';
 import { AppContext } from '../../context/AppContext';
 import { callOpenRouterAPI } from '../../api/openRouterAPI';
 import Button from '../common/Button';
@@ -21,8 +22,7 @@ const cleanOpicResponse = (rawText) => {
     return cleanedLine;
   });
   return cleanedLines.join('\n').trim();
-};
-
+// End of InputTab component
 
 const InputTab = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -56,7 +56,7 @@ const InputTab = () => {
     }
     setIsLoading(false);
   };
-  
+
   const handleProcessText = () => {
     const extractedSentences = opicText
       .split(/[.!?]+/)
@@ -106,17 +106,43 @@ const InputTab = () => {
           <option value="AL">AL (Advanced Low)</option>
         </select>
       </div>
-      <textarea value={opicText} onChange={(e) => setOpicText(e.target.value)} rows="8" placeholder="Dán đoạn văn vào đây..."></textarea>
       <div className="button-group">
         <Button onClick={handleFetchData} disabled={isLoading}>
-          {isLoading ? <div className="spinner"></div> : '🤖 Lấy dữ liệu OPIC'}
+          {isLoading ? 'Đang lấy câu hỏi...' : 'Lấy câu hỏi OPIC'}
         </Button>
-        <Button onClick={handleProcessText} disabled={!opicText}>
-          📝 Bắt đầu Luyện tập
+        <Button onClick={handleProcessText} disabled={!opicText || isLoading} variant="secondary">
+          Xử lý văn bản
         </Button>
+        <button
+          aria-label="Nghe toàn bộ nội dung"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, marginLeft: 8 }}
+          onClick={() => speakText(opicText)}
+          disabled={!opicText}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 9v6h4l5 5V4L7 9H3z" fill="#4facfe"/>
+            <path d="M16.5 12c0-1.77-.77-3.29-2-4.29v8.58c1.23-1 2-2.52 2-4.29z" fill="#4facfe"/>
+            <path d="M14.5 3.97v2.06c3.39.49 6 3.39 6 6.97s-2.61 6.48-6 6.97v2.06c4.01-.51 7-3.86 7-9.03s-2.99-8.52-7-9.03z" fill="#4facfe"/>
+          </svg>
+        </button>
       </div>
+      <textarea
+        rows={8}
+        value={opicText}
+        onChange={e => setOpicText(e.target.value)}
+        placeholder="Dán câu hỏi và câu trả lời OPIC vào đây hoặc nhấn nút lấy câu hỏi."
+        style={{ marginBottom: 8 }}
+      />
+      {opicText && (
+        <div className="preview-section">
+          <h4>Xem trước nội dung</h4>
+          <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{opicText}</pre>
+        </div>
+      )}
     </div>
   );
+};
+
 };
 
 export default InputTab;

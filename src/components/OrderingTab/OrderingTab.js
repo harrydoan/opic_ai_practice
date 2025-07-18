@@ -1,4 +1,5 @@
 import React, { useState, useContext, useEffect, useCallback } from 'react';
+import { speakText } from '../../utils/speech';
 import { AppContext } from '../../context/AppContext';
 import Button from '../common/Button';
 import './OrderingTab.css';
@@ -78,7 +79,20 @@ const OrderingTab = () => {
                     <span style={{ color: "#4facfe", fontWeight: "bold" }}>Sắp xếp câu</span>
                 </div>
                 <h3>❓ Câu này ở vị trí thứ mấy trong đoạn văn?</h3>
-                <div className="ordering-sentence">{currentSentence}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <div className="ordering-sentence">{currentSentence}</div>
+                  <button
+                    aria-label="Nghe câu"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+                    onClick={() => speakText(currentSentence)}
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M3 9v6h4l5 5V4L7 9H3z" fill="#4facfe"/>
+                      <path d="M16.5 12c0-1.77-.77-3.29-2-4.29v8.58c1.23-1 2-2.52 2-4.29z" fill="#4facfe"/>
+                      <path d="M14.5 3.97v2.06c3.39.49 6 3.39 6 6.97s-2.61 6.48-6 6.97v2.06c4.01-.51 7-3.86 7-9.03s-2.99-8.52-7-9.03z" fill="#4facfe"/>
+                    </svg>
+                  </button>
+                </div>
                 <div className="ordering-options-grid">
                     {options.map(option => {
                         let btnClass = 'answer-btn';
