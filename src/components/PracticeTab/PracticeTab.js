@@ -38,6 +38,7 @@ const PracticeTab = () => {
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswers, setSelectedAnswers] = useState([]);
   const [error, setError] = useState(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
 
   useEffect(() => {
     if (sentenceData.length > 0) {
@@ -150,15 +151,31 @@ const PracticeTab = () => {
     }
   }, [currentIndex, deck, sentenceData, selectedModel, numBlanks, fetchQuestion]);
 
-  const handleAnswerSelect = (answer) => {
+  const handleAnswerSelect = async (answer) => {
     if (isAnswered) return;
     let newSelected = selectedAnswers.includes(answer)
       ? selectedAnswers.filter(a => a !== answer)
       : [...selectedAnswers, answer];
     setSelectedAnswers(newSelected);
-    // Nếu đã chọn đủ số đáp án, tự động kiểm tra
+    // Nếu đã chọn đủ số đáp án, tự động kiểm tra và lấy giải thích ngữ pháp/dịch nếu chưa có
     if (newSelected.length === numBlanks) {
-      setTimeout(() => setIsAnswered(true), 200);
+      setFeedbackLoading(true);
+      let grammar_explanation = currentQuestion.grammar_explanation;
+      let translation = currentQuestion.translation;
+      if (!grammar_explanation || !translation) {
+        try {
+          const explainPrompt = `Hãy giải thích ngữ pháp của từ "${currentQuestion.correct_answers[0]}" trong câu: "${currentQuestion.question_sentence.replace(/____/g, currentQuestion.correct_answers[0])}" (bao gồm từ loại, vai trò, vị trí trong câu, giải thích bằng tiếng Việt). Sau đó dịch toàn bộ câu sang tiếng Việt. Trả về một object JSON với 2 trường: grammar_explanation, translation.`;
+          const res = await callOpenRouterAPI(explainPrompt, selectedModel || 'gpt-3.5-turbo', { max_tokens: 300 });
+          const obj = JSON.parse(res.match(/{[\s\S]*}/)[0]);
+          grammar_explanation = obj.grammar_explanation || '';
+          translation = obj.translation || '';
+        } catch (e) {}
+      }
+      setCurrentQuestion(q => ({ ...q, grammar_explanation, translation }));
+      setTimeout(() => {
+        setIsAnswered(true);
+        setFeedbackLoading(false);
+      }, 200);
     }
   };
 
@@ -261,7 +278,7 @@ const PracticeTab = () => {
               grammar: currentQuestion.grammar_explanation,
               translation: currentQuestion.translation,
             }}
-            isLoading={false}
+            isLoading={feedbackLoading}
           />
           <Button onClick={handleNextQuestion} style={{ alignSelf: 'center', minWidth: 160, fontWeight: 600 }}>
             Next Question →
