@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useCallback } from 'react';
 import { AppContext } from '../../context/AppContext';
 import { callOpenRouterAPI } from '../../api/openRouterAPI';
 import Feedback from './Feedback';
@@ -6,24 +6,21 @@ import Button from '../common/Button';
 import './PracticeTab.css';
 
 
-// Prompt động cho số từ che 1, 2, 3 (yêu cầu AI trả về đúng định dạng)
-const getPracticePrompt = (sentence, numBlanks) => {
-  return `Given the sentence: "${sentence}"
-1. Randomly select and hide exactly ${numBlanks} different words from the sentence. Replace each hidden word with a blank (____) at its original position in the sentence. The blanks must be in the correct positions of the original words. Do NOT hide the same combination every time.
-2. Provide exactly 6 answer options in a JSON array called "options". Exactly ${numBlanks} of these must be the correct words for the blanks (in the order they appear in the sentence), and the rest must be plausible but incorrect (not in the sentence). The correct answers must be present in the options array.
-3. In a JSON array called "correct_answers", list the correct words for the blanks in the order they appear in the sentence.
-4. In "question_sentence", return the sentence with the correct number of blanks (____) in the correct positions.
-5. In "grammar_explanation", pick ONE of the hidden words and explain its grammar in Vietnamese (bao gồm từ loại, vai trò, vị trí trong câu).
-6. In "translation", translate the full original sentence into Vietnamese.
-Only output a single JSON object with these 5 fields and nothing else:
-{
-  "question_sentence": "...", // The sentence with ${numBlanks} blank(s) (____) in the correct positions
-  "options": ["option1", "option2", "option3", "option4", "option5", "option6"],
-  "correct_answers": [${Array(numBlanks).fill('"word"').join(', ')}],
-  "grammar_explanation": "...",
-  "translation": "..."
-}`;
-};
+
+// Prompt lấy từ loại tương tự (đáp án sai) cho 1 từ
+const getDistractorPrompt = (word, sentence) =>
+  `Tôi cần tạo câu hỏi điền từ tiếng Anh. Hãy trả về 5 từ loại tương tự với từ "${word}" trong câu: "${sentence}" (không trùng với từ đó, không xuất hiện trong câu, không phải tên riêng, không phải từ hiếm, phải là từ phổ biến, cùng từ loại, phù hợp điền vào vị trí đó). Trả về một mảng JSON duy nhất gồm 5 từ, không giải thích gì thêm.`;
+
+// Hàm chọn ngẫu nhiên n từ không trùng nhau trong câu (chỉ chọn từ có độ dài > 2)
+function pickRandomWords(sentence, n) {
+  const words = sentence.split(/\s+/).map(w => w.replace(/[.,!?;:]/g, ''));
+  const validIdx = words
+    .map((w, i) => (w.length > 2 ? i : null))
+    .filter(i => i !== null);
+  if (validIdx.length < n) return [];
+  const shuffled = validIdx.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, n).map(i => ({ word: words[i], idx: i }));
+}
 
 
 const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
@@ -58,7 +55,26 @@ const PracticeTab = () => {
   };
 
   // Sử dụng useCallback để tránh lỗi missing dependency
-  const fetchQuestion = React.useCallback(async () => {
+
+  // Hàm lấy đáp án sai cho từng từ bị che
+  const fetchDistractors = useCallback(async (words, sentence) => {
+    let distractors = [];
+    for (let i = 0; i < words.length; i++) {
+      const prompt = getDistractorPrompt(words[i], sentence);
+      try {
+        const res = await callOpenRouterAPI(prompt, selectedModel || 'gpt-3.5-turbo', { max_tokens: 200 });
+        const arr = JSON.parse(res.match(/\[.*\]/s)[0]);
+        distractors = distractors.concat(arr.filter(w => !words.includes(w)));
+      } catch (e) {
+        // Nếu lỗi, bỏ qua từ này
+      }
+    }
+    // Loại trùng và cắt còn đủ số lượng
+    return Array.from(new Set(distractors)).slice(0, 6 - words.length);
+  }, [selectedModel]);
+
+  // Hàm tạo câu hỏi luyện tập
+  const fetchQuestion = useCallback(async () => {
     setIsLoading(true);
     setIsAnswered(false);
     setSelectedAnswers([]);
@@ -80,30 +96,53 @@ const PracticeTab = () => {
       return;
     }
 
-    try {
-      const prompt = getPracticePrompt(sentenceObject.originalText, numBlanks);
-      let rawResponse;
-      try {
-        rawResponse = await callOpenRouterAPI(prompt, selectedModel || 'gpt-3.5-turbo', { max_tokens: 1000 });
-      } catch (err) {
-        if (err?.message?.toLowerCase().includes('quota') || err?.message?.toLowerCase().includes('limit')) {
-          rawResponse = await callOpenRouterAPI(prompt, 'gpt-3.5-turbo', { max_tokens: 1000 });
-        } else {
-          throw err;
-        }
-      }
-      const questionData = JSON.parse(rawResponse.match(/{[\s\S]*}/)[0]);
-      if (questionData && questionData.options && questionData.correct_answers) {
-        setCurrentQuestion(questionData);
-      } else {
-        throw new Error("AI không trả về dữ liệu hợp lệ.");
-      }
-    } catch (err) {
-      setError("AI không phản hồi đúng hoặc đã hết quota. Đang thử lại với mô hình miễn phí.");
-    } finally {
+    // 1. Chọn ngẫu nhiên numBlanks từ trong câu
+    const picked = pickRandomWords(sentenceObject.originalText, numBlanks);
+    if (picked.length < numBlanks) {
+      setError('Câu quá ngắn hoặc không đủ từ để che.');
       setIsLoading(false);
+      return;
     }
-  }, [deck, currentIndex, sentenceData, selectedModel, numBlanks]);
+    const blankWords = picked.map(p => p.word);
+    const blankIdxs = picked.map(p => p.idx);
+
+    // 2. Tạo câu hỏi với các từ bị che
+    const wordsArr = sentenceObject.originalText.split(/\s+/);
+    let questionSentence = wordsArr.map((w, i) => blankIdxs.includes(i) ? '____' : w).join(' ');
+
+    // 3. Lấy đáp án sai từ AI
+    let distractors = await fetchDistractors(blankWords, sentenceObject.originalText);
+    // Nếu không đủ, thêm các từ tiếng Anh phổ biến
+    const fallbackDistractors = ['people', 'place', 'thing', 'time', 'day', 'life', 'man', 'woman', 'child', 'world', 'school', 'state', 'family', 'student', 'group', 'country', 'problem', 'hand', 'part', 'case', 'week', 'company', 'system', 'program', 'question', 'work', 'government', 'number', 'night', 'point', 'home', 'water', 'room', 'mother', 'area', 'money', 'story', 'fact', 'month', 'lot', 'right', 'study', 'book', 'eye', 'job', 'word', 'business', 'issue', 'side', 'kind', 'head', 'house', 'service', 'friend', 'father', 'power', 'hour', 'game', 'line', 'end', 'member', 'law', 'car', 'city', 'community', 'name', 'president', 'team', 'minute', 'idea', 'kid', 'body', 'information', 'back', 'parent', 'face', 'others', 'level', 'office', 'door', 'health', 'person', 'art', 'war', 'history', 'party', 'result', 'change', 'morning', 'reason', 'research', 'girl', 'guy', 'moment', 'air', 'teacher', 'force', 'education'];
+    while (distractors.length < 6 - blankWords.length) {
+      const next = fallbackDistractors.find(w => !blankWords.includes(w) && !distractors.includes(w));
+      if (!next) break;
+      distractors.push(next);
+    }
+
+    // 4. Trộn đáp án đúng và sai
+    const options = shuffleArray([...blankWords, ...distractors]).slice(0, 6);
+
+    // 5. Lấy giải thích ngữ pháp và dịch (chỉ cần 1 từ che)
+    let grammar_explanation = '';
+    let translation = '';
+    try {
+      const explainPrompt = `Hãy giải thích ngữ pháp của từ "${blankWords[0]}" trong câu: "${sentenceObject.originalText}" (bao gồm từ loại, vai trò, vị trí trong câu, giải thích bằng tiếng Việt). Sau đó dịch toàn bộ câu sang tiếng Việt. Trả về một object JSON với 2 trường: grammar_explanation, translation.`;
+      const res = await callOpenRouterAPI(explainPrompt, selectedModel || 'gpt-3.5-turbo', { max_tokens: 300 });
+      const obj = JSON.parse(res.match(/{[\s\S]*}/)[0]);
+      grammar_explanation = obj.grammar_explanation || '';
+      translation = obj.translation || '';
+    } catch (e) {}
+
+    setCurrentQuestion({
+      question_sentence: questionSentence,
+      options,
+      correct_answers: blankWords,
+      grammar_explanation,
+      translation
+    });
+    setIsLoading(false);
+  }, [deck, currentIndex, sentenceData, selectedModel, numBlanks, fetchDistractors]);
 
   useEffect(() => {
     if (sentenceData.length > 0 && deck.length > 0 && (typeof currentIndex === 'number')) {
@@ -119,7 +158,7 @@ const PracticeTab = () => {
     setSelectedAnswers(newSelected);
     // Nếu đã chọn đủ số đáp án, tự động kiểm tra
     if (newSelected.length === numBlanks) {
-      setTimeout(() => setIsAnswered(true), 200); // delay nhẹ để UX mượt
+      setTimeout(() => setIsAnswered(true), 200);
     }
   };
 
