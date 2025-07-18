@@ -44,7 +44,6 @@ const PracticeTab = () => {
       setDeck(shuffleArray(Array.from(Array(sentenceData.length).keys())));
       setCurrentIndex(0);
       setNumBlanks(1); // mặc định 1 từ
-      setPendingNumBlanks(1);
     }
   }, [sentenceData]);
 
