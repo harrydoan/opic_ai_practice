@@ -5,6 +5,7 @@ import InputTab from './components/InputTab/InputTab';
 import PracticeTab from './components/PracticeTab/PracticeTab';
 import OrderingTab from './components/OrderingTab/OrderingTab';
 import Card from './components/common/Card';
+import RewriteTab from './components/RewriteTab/RewriteTab';
 
 function App() {
   const { activeTab } = useContext(AppContext);
