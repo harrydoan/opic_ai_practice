@@ -38,9 +38,13 @@ const InputTab = () => {
 The answer should be 150–200 words, natural, fluent, and include personal details and storytelling.
 Use informal spoken English.
 Only output the question and the answer. Do not include any introductions, labels, titles, or extra text.`;
-    const result = await callOpenRouterAPI(OPIC_PROMPT, 'gpt-3.5-turbo');
-    const cleanedText = cleanOpicResponse(result);
-    setOpicText(cleanedText);
+    const result = await callOpenRouterAPI(OPIC_PROMPT, selectedModel || 'gpt-3.5-turbo');
+    if (result && result.error) {
+      setOpicText(`Lỗi khi kết nối AI: ${result.message}`);
+    } else {
+      const cleanedText = cleanOpicResponse(result);
+      setOpicText(cleanedText);
+    }
     setIsLoading(false);
   };
   
