@@ -2,13 +2,12 @@ import React, { useContext } from 'react';
 import { AppContext } from '../../context/AppContext';
 import './layout.css';
 
-const Tabs = () => {
+const Tabs = ({ tabs }) => {
   const { activeTab, setActiveTab } = useContext(AppContext);
-  const tabs = ['Nhập liệu', 'Luyện tập', 'Sắp xếp câu'];
-
+  const tabList = tabs || ['Nhập liệu', 'Luyện tập', 'Sắp xếp câu'];
   return (
     <div className="tab-buttons">
-      {tabs.map(tab => (
+      {tabList.map(tab => (
         <button
           key={tab}
           className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
