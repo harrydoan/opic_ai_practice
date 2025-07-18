@@ -166,10 +166,18 @@ const PracticeTab = () => {
         try {
           const explainPrompt = `Hãy giải thích ngữ pháp của từ "${currentQuestion.correct_answers[0]}" trong câu: "${currentQuestion.question_sentence.replace(/____/g, currentQuestion.correct_answers[0])}" (bao gồm từ loại, vai trò, vị trí trong câu, giải thích bằng tiếng Việt). Sau đó dịch toàn bộ câu sang tiếng Việt. Trả về một object JSON với 2 trường: grammar_explanation, translation.`;
           const res = await callOpenRouterAPI(explainPrompt, selectedModel || 'gpt-3.5-turbo', { max_tokens: 300 });
-          const obj = JSON.parse(res.match(/{[\s\S]*}/)[0]);
-          grammar_explanation = obj.grammar_explanation || '';
-          translation = obj.translation || '';
-        } catch (e) {}
+          let obj = {};
+          try {
+            obj = JSON.parse(res.match(/{[\s\S]*}/)[0]);
+          } catch (err) {
+            obj = {};
+          }
+          grammar_explanation = typeof obj.grammar_explanation === 'string' ? obj.grammar_explanation : '';
+          translation = typeof obj.translation === 'string' ? obj.translation : '';
+        } catch (e) {
+          grammar_explanation = '';
+          translation = '';
+        }
       }
       setCurrentQuestion(q => ({ ...q, grammar_explanation, translation }));
       setTimeout(() => {
