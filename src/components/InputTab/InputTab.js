@@ -135,7 +135,14 @@ const InputTab = () => {
         rows={8}
         value={opicText}
         onChange={e => setOpicText(e.target.value)}
-        placeholder="Dán câu hỏi và câu trả lời OPIC vào đây hoặc nhấn nút lấy câu hỏi."
+        placeholder={
+          `Hướng dẫn sử dụng:
+• Nhấn "Lấy câu hỏi OPIC" để lấy 1 đề luyện tập mẫu tự động.
+• Hoặc dán câu hỏi và câu trả lời OPIC của bạn vào đây.
+• Sau đó nhấn "Xử lý văn bản" để bắt đầu luyện tập các kỹ năng: điền từ, sắp xếp câu, viết lại câu, thi thử.
+• Bạn có thể nghe lại nội dung bằng nút loa.
+• Nếu gặp lỗi, hãy thử chọn model AI khác hoặc kiểm tra lại nội dung.`
+        }
         style={{ marginBottom: 8 }}
       />
       {processError && (
