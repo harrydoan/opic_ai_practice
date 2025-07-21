@@ -1,4 +1,10 @@
+
 import React, { useState, useRef, useContext } from 'react';
+import { AppContext } from '../../context/AppContext';
+import Button from '../common/Button';
+import { speakText } from '../../utils/speech';
+import './MockTestTab.css';
+
 // Hàm giả lập gửi dữ liệu lên AI và nhận kết quả đánh giá
 async function sendAudioToAI(audioBlob, questionText) {
   // Ở đây bạn sẽ gọi API thực tế, demo trả về kết quả giả lập
@@ -13,10 +19,6 @@ async function sendAudioToAI(audioBlob, questionText) {
     }, 2000);
   });
 }
-import { AppContext } from '../../context/AppContext';
-import Button from '../common/Button';
-import { speakText } from '../../utils/speech';
-import './MockTestTab.css';
 
 const DURATIONS = [60, 120, 180];
 
