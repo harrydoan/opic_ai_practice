@@ -4,7 +4,7 @@ import Button from '../common/Button';
 import { speakText } from '../../utils/speech';
 import './MockTestTab.css';
 
-const DURATIONS = [60, 90, 120];
+const DURATIONS = [60, 120, 180];
 
 const MockTestTab = () => {
   const { sentenceData } = useContext(AppContext);
@@ -90,19 +90,30 @@ const MockTestTab = () => {
   return (
     <div className="mocktest-tab-container">
       <h2 style={{ color: '#1976d2', marginBottom: 8 }}>Thi thử OPIC</h2>
-      <div style={{ marginBottom: 16 }}>
-        <strong>Chọn thời gian nói:</strong>{' '}
-        {DURATIONS.map(sec => (
-          <Button
-            key={sec}
-            onClick={() => setSelectedDuration(sec)}
-            variant={selectedDuration === sec ? undefined : 'secondary'}
-            style={{ margin: '0 4px', padding: '4px 18px', fontWeight: selectedDuration === sec ? 700 : 400 }}
-            disabled={isRecording}
-          >
-            {sec/60} phút
-          </Button>
-        ))}
+      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <strong>Chọn thời gian nói:</strong>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {DURATIONS.map(sec => (
+            <Button
+              key={sec}
+              onClick={() => setSelectedDuration(sec)}
+              variant={selectedDuration === sec ? undefined : 'secondary'}
+              style={{
+                minWidth: 60,
+                fontWeight: selectedDuration === sec ? 700 : 400,
+                background: selectedDuration === sec ? '#1976d2' : '#e3e3e3',
+                color: selectedDuration === sec ? '#fff' : '#333',
+                border: selectedDuration === sec ? '2px solid #1976d2' : '1px solid #bbb',
+                fontSize: 18,
+                padding: '6px 20px',
+                borderRadius: 18
+              }}
+              disabled={isRecording}
+            >
+              {sec/60} phút
+            </Button>
+          ))}
+        </div>
       </div>
       <div style={{ marginBottom: 16, fontSize: 18 }}>
         <strong>Câu hỏi:</strong> {question ? question : <span style={{ color: 'gray' }}>(Chưa có dữ liệu)</span>}
@@ -125,9 +136,24 @@ const MockTestTab = () => {
         </Button>
         <div style={{ width: 320, margin: '12px 0' }}>
           <div style={{ height: 12, background: '#e3e3e3', borderRadius: 8, overflow: 'hidden' }}>
-            <div style={{ width: `${(timer/selectedDuration)*100}%`, height: '100%', background: timer <= 10 ? '#e53935' : '#1976d2', transition: 'width 1s linear' }} />
+            {(() => {
+              const percent = timer / selectedDuration;
+              let barColor = '#1976d2'; // xanh
+              if (percent <= 0.33) barColor = '#e53935'; // đỏ
+              else if (percent <= 0.66) barColor = '#ffc107'; // vàng
+              return (
+                <div
+                  style={{
+                    width: `${percent * 100}%`,
+                    height: '100%',
+                    background: barColor,
+                    transition: 'width 1s linear, background 0.5s',
+                  }}
+                />
+              );
+            })()}
           </div>
-          <div style={{ textAlign: 'center', fontSize: 20, fontWeight: 'bold', color: timer <= 10 ? '#e53935' : '#1976d2', marginTop: 2 }}>
+          <div style={{ textAlign: 'center', fontSize: 20, fontWeight: 'bold', color: timer <= 10 ? '#e53935' : timer/selectedDuration <= 0.66 ? '#ffc107' : '#1976d2', marginTop: 2 }}>
             {Math.floor(timer/60).toString().padStart(2, '0')}:{(timer%60).toString().padStart(2, '0')}
           </div>
         </div>
