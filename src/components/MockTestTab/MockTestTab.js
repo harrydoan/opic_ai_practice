@@ -50,6 +50,36 @@ function getOpicLevelDesc(level) {
 }
 
 function MockTestTab() {
+  const { sentenceData } = useContext(AppContext);
+  const [selectedDuration, setSelectedDuration] = useState(60); // mặc định 1 phút
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [timer, setTimer] = useState(60);
+  const [isFinished, setIsFinished] = useState(false);
+  const [questionPlayed, setQuestionPlayed] = useState(false);
+  const [canReplay, setCanReplay] = useState(true);
+  const [questionWait, setQuestionWait] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const timerRef = useRef(null);
+  const [error, setError] = useState('');
+  const [aiResult, setAiResult] = useState(null);
+  const [isSending, setIsSending] = useState(false);
+
+  // Lấy câu hỏi đầu tiên
+  const question = sentenceData && sentenceData.length > 0 ? sentenceData[0].originalText : '';
+
+  // Phát câu hỏi, sau 5s cho phép ghi âm
+  const playQuestion = () => {
+    if (!question) return;
+    setQuestionWait(true);
+    speakText(question);
+    setTimeout(() => {
+      setQuestionWait(false);
+      setQuestionPlayed(true);
+      setCanReplay(false);
+      startRecording();
+    }, 5000);
+  };
 
   // Cho phép nghe lại 1 lần
   const replayQuestion = () => {
