@@ -23,40 +23,33 @@ async function sendAudioToAI(audioBlob, questionText) {
   // Nếu trả về JSON dạng text, parse ra object
   try {
     if (typeof result === 'string') {
-      const jsonStart = result.indexOf('{');
-      const jsonEnd = result.lastIndexOf('}');
-      if (jsonStart !== -1 && jsonEnd !== -1) {
-        return JSON.parse(result.substring(jsonStart, jsonEnd + 1));
-      }
+      return JSON.parse(result);
     }
     return result;
-  } catch (e) {
-    return { pronunciation: '', feedback: result, level: '', score: '' };
+  } catch {
+    return { pronunciation: '', feedback: 'Lỗi phân tích kết quả AI', level: '', score: '' };
   }
 }
 
-const DURATIONS = [60, 120, 180];
+// Giải thích level OPIC
+function getOpicLevelDesc(level) {
+  if (!level) return '';
+  const descs = {
+    'Novice Low': '– Có thể nói các câu rất đơn giản, vốn từ hạn chế.',
+    'Novice Mid': '– Có thể trả lời các câu hỏi cơ bản, phát âm còn nhiều lỗi.',
+    'Novice High': '– Có thể giao tiếp cơ bản, còn hạn chế về ngữ pháp.',
+    'Intermediate Low': '– Có thể trình bày ý đơn giản, còn thiếu tự nhiên.',
+    'Intermediate Mid': '– Giao tiếp tốt các chủ đề quen thuộc, còn mắc lỗi nhỏ.',
+    'Intermediate High': '– Giao tiếp đa dạng, diễn đạt khá tự nhiên.',
+    'Advanced Low': '– Giao tiếp tốt, diễn đạt ý phức tạp, phát âm tốt.',
+    'Advanced Mid': '– Giao tiếp lưu loát, tự nhiên, kiểm soát tốt ngôn ngữ.',
+    'Advanced High': '– Gần như người bản xứ, rất ít lỗi.',
+    'Superior': '– Giao tiếp như người bản xứ, diễn đạt xuất sắc.',
+    'Intermediate': '– Trình độ trung bình, có thể giao tiếp các chủ đề quen thuộc.',
+    'Advanced': '– Trình độ cao, giao tiếp tốt nhiều chủ đề.',
+  };
+  return descs[level] ? `(${descs[level]})` : '';
 
-const MockTestTab = () => {
-  const { sentenceData } = useContext(AppContext);
-  const [selectedDuration, setSelectedDuration] = useState(60); // mặc định 1 phút
-  const [isRecording, setIsRecording] = useState(false);
-  const [audioUrl, setAudioUrl] = useState(null);
-  const [timer, setTimer] = useState(60);
-  const [isFinished, setIsFinished] = useState(false);
-  const [questionPlayed, setQuestionPlayed] = useState(false);
-  const [canReplay, setCanReplay] = useState(true);
-  const [questionWait, setQuestionWait] = useState(false);
-  const mediaRecorderRef = useRef(null);
-  const timerRef = useRef(null);
-  const [error, setError] = useState('');
-  const [aiResult, setAiResult] = useState(null);
-  const [isSending, setIsSending] = useState(false);
-
-  // Lấy câu hỏi đầu tiên
-  const question = sentenceData && sentenceData.length > 0 ? sentenceData[0].originalText : '';
-
-  // Phát câu hỏi, sau 5s cho phép ghi âm
   const playQuestion = () => {
     if (!question) return;
     setQuestionWait(true);
@@ -250,6 +243,10 @@ const MockTestTab = () => {
             <div><b>Điểm:</b> {aiResult.score}</div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
 
 // Giải thích level OPIC
 function getOpicLevelDesc(level) {
@@ -270,13 +267,6 @@ function getOpicLevelDesc(level) {
   };
   return descs[level] ? `(${descs[level]})` : '';
 }
-      </div>
-    </div>
-  );
-};
-
-
-export default MockTestTab;
 
 // Giải thích level OPIC
 function getOpicLevelDesc(level) {

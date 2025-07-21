@@ -109,6 +109,10 @@ const InputTab = () => {
 
   return (
     <div className="input-tab-container">
+      <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+        <Button onClick={savePracticeData} variant="secondary">Lưu bài luyện tập</Button>
+        <Button onClick={loadPracticeData} variant="secondary">Tải lại bài đã lưu</Button>
+      </div>
       <div className="model-selector">
         <label htmlFor="model-select">Chọn Model AI:</label>
         <select id="model-select" value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}>
