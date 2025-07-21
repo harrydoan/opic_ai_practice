@@ -163,8 +163,29 @@ const MockTestTab = () => {
             <audio controls src={audioUrl} />
             <div style={{ marginTop: 8, display: 'flex', gap: 12, justifyContent: 'center' }}>
               <Button onClick={() => setAudioUrl(null)} variant="secondary">Xóa ghi âm</Button>
-              <Button onClick={() => window?.setActiveTab ? window.setActiveTab('Thi thử') : null} variant="secondary">Thi lại</Button>
-              <Button onClick={() => alert('Tính năng chấm điểm AI sẽ được bổ sung!')} variant="primary">Gửi chấm điểm</Button>
+              <Button
+                onClick={() => {
+                  // Reset lại trạng thái để thi lại
+                  setAudioUrl(null);
+                  setIsFinished(false);
+                  setTimer(selectedDuration);
+                  setQuestionPlayed(false);
+                  setCanReplay(true);
+                  setError('');
+                }}
+                variant="secondary"
+              >Thi lại</Button>
+              <Button
+                onClick={() => {
+                  // Gửi dữ liệu ghi âm cho AI chấm điểm (demo: alert)
+                  if (audioUrl) {
+                    alert('Đã gửi dữ liệu ghi âm cho AI chấm điểm! (Demo)');
+                  } else {
+                    alert('Bạn cần ghi âm trước khi gửi chấm điểm!');
+                  }
+                }}
+                variant="primary"
+              >Gửi chấm điểm</Button>
             </div>
           </div>
         )}

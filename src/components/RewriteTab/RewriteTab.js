@@ -100,14 +100,22 @@ function RewriteTab() {
                 <Button onClick={() => { pickRandomSentence(); setShowAnswer(false); }} style={{ fontSize: 18, padding: '8px 28px' }}>
                   Câu tiếp theo
                 </Button>
-                <Button onClick={() => {
-                  if (typeof window !== 'undefined' && window.setActiveTab) {
-                    window.setActiveTab('Thi thử');
-                  } else {
-                    const evt = new CustomEvent('setActiveTab', { detail: 'Thi thử' });
-                    window.dispatchEvent(evt);
-                  }
-                }} style={{ fontSize: 18, padding: '8px 28px', marginLeft: 0 }} variant="secondary">
+                <Button
+                  onClick={() => {
+                    // Chuyển tab qua Thi thử bằng context nếu có
+                    if (typeof window !== 'undefined') {
+                      if (window.setActiveTab) {
+                        window.setActiveTab('Thi thử');
+                      } else {
+                        // fallback: tìm AppContext
+                        const evt = new CustomEvent('setActiveTab', { detail: 'Thi thử' });
+                        window.dispatchEvent(evt);
+                      }
+                    }
+                  }}
+                  style={{ fontSize: 18, padding: '8px 28px', marginLeft: 0 }}
+                  variant="secondary"
+                >
                   Thi thử
                 </Button>
               </div>
