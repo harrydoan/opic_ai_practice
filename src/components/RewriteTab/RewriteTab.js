@@ -26,7 +26,6 @@ function RewriteTab() {
     setUserInput('');
     setResult(null);
     setShowAnswer(false);
-    setHintWords(getHintWords(sentenceData[idx].originalText));
   };
 
   // Tự động chọn câu khi vào tab hoặc sau khi bấm Câu tiếp theo
