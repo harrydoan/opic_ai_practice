@@ -1,24 +1,58 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useContext } from 'react';
+import { AppContext } from '../../context/AppContext';
 import Button from '../common/Button';
+import { speakText } from '../../utils/speech';
 import './MockTestTab.css';
 
-const MOCK_TEST_TIME = 120; // seconds
+const DURATIONS = [60, 90, 120];
 
 const MockTestTab = () => {
-  // const { sentenceData } = useContext(AppContext); // Removed unused variable
+  const { sentenceData } = useContext(AppContext);
+  const [selectedDuration, setSelectedDuration] = useState(60); // mặc định 1 phút
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
-  const [timer, setTimer] = useState(MOCK_TEST_TIME);
+  const [timer, setTimer] = useState(60);
   const [isFinished, setIsFinished] = useState(false);
+  const [questionPlayed, setQuestionPlayed] = useState(false);
+  const [canReplay, setCanReplay] = useState(true);
+  const [questionWait, setQuestionWait] = useState(false);
   const mediaRecorderRef = useRef(null);
   const timerRef = useRef(null);
   const [error, setError] = useState('');
+
+  // Lấy câu hỏi đầu tiên
+  const question = sentenceData && sentenceData.length > 0 ? sentenceData[0].originalText : '';
+
+  // Phát câu hỏi, sau 5s cho phép ghi âm
+  const playQuestion = () => {
+    if (!question) return;
+    setQuestionWait(true);
+    speakText(question);
+    setTimeout(() => {
+      setQuestionWait(false);
+      setQuestionPlayed(true);
+      setCanReplay(false);
+      startRecording();
+    }, 5000);
+  };
+
+  // Cho phép nghe lại 1 lần
+  const replayQuestion = () => {
+    if (!question || !canReplay) return;
+    setCanReplay(false);
+    speakText(question);
+    setTimeout(() => {
+      setQuestionWait(false);
+      setQuestionPlayed(true);
+      startRecording();
+    }, 5000);
+  };
 
   const startRecording = async () => {
     setError('');
     setIsFinished(false);
     setAudioUrl(null);
-    setTimer(MOCK_TEST_TIME);
+    setTimer(selectedDuration);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorderRef.current = new window.MediaRecorder(stream);
@@ -55,21 +89,56 @@ const MockTestTab = () => {
 
   return (
     <div className="mocktest-tab-container">
-      <h2>Thi thử OPIC</h2>
-      <p>Hãy nhấn nút bên dưới để bắt đầu ghi âm bài nói của bạn. Bạn có {MOCK_TEST_TIME/60} phút để hoàn thành.</p>
+      <h2 style={{ color: '#1976d2', marginBottom: 8 }}>Thi thử OPIC</h2>
+      <div style={{ marginBottom: 16 }}>
+        <strong>Chọn thời gian nói:</strong>{' '}
+        {DURATIONS.map(sec => (
+          <Button
+            key={sec}
+            onClick={() => setSelectedDuration(sec)}
+            variant={selectedDuration === sec ? undefined : 'secondary'}
+            style={{ margin: '0 4px', padding: '4px 18px', fontWeight: selectedDuration === sec ? 700 : 400 }}
+            disabled={isRecording}
+          >
+            {sec/60} phút
+          </Button>
+        ))}
+      </div>
+      <div style={{ marginBottom: 16, fontSize: 18 }}>
+        <strong>Câu hỏi:</strong> {question ? question : <span style={{ color: 'gray' }}>(Chưa có dữ liệu)</span>}
+        <Button onClick={playQuestion} disabled={isRecording || questionWait || !question} style={{ marginLeft: 16, fontSize: 16 }}>
+          Nghe câu hỏi
+        </Button>
+        {questionPlayed && canReplay && (
+          <Button onClick={replayQuestion} disabled={isRecording || questionWait} style={{ marginLeft: 8, fontSize: 16 }} variant="secondary">
+            Nghe lại
+          </Button>
+        )}
+      </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-        <Button onClick={isRecording ? stopRecording : startRecording} style={{ fontSize: 24, padding: '24px 48px', borderRadius: 32, background: isRecording ? '#e53935' : '#43a047', color: '#fff' }}>
+        <Button
+          onClick={isRecording ? stopRecording : playQuestion}
+          style={{ fontSize: 24, padding: '24px 48px', borderRadius: 32, background: isRecording ? '#e53935' : '#43a047', color: '#fff' }}
+          disabled={questionWait || (!isRecording && !question)}
+        >
           {isRecording ? 'Dừng ghi âm' : 'Bắt đầu ghi âm'}
         </Button>
-        <div style={{ fontSize: 32, fontWeight: 'bold', color: timer <= 10 ? '#e53935' : '#1976d2' }}>
-          {Math.floor(timer/60).toString().padStart(2, '0')}:{(timer%60).toString().padStart(2, '0')}
+        <div style={{ width: 320, margin: '12px 0' }}>
+          <div style={{ height: 12, background: '#e3e3e3', borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ width: `${(timer/selectedDuration)*100}%`, height: '100%', background: timer <= 10 ? '#e53935' : '#1976d2', transition: 'width 1s linear' }} />
+          </div>
+          <div style={{ textAlign: 'center', fontSize: 20, fontWeight: 'bold', color: timer <= 10 ? '#e53935' : '#1976d2', marginTop: 2 }}>
+            {Math.floor(timer/60).toString().padStart(2, '0')}:{(timer%60).toString().padStart(2, '0')}
+          </div>
         </div>
         {error && <div style={{ color: 'red' }}>{error}</div>}
         {audioUrl && (
           <div style={{ marginTop: 16 }}>
             <audio controls src={audioUrl} />
-            <div style={{ marginTop: 8 }}>
+            <div style={{ marginTop: 8, display: 'flex', gap: 12, justifyContent: 'center' }}>
               <Button onClick={() => setAudioUrl(null)} variant="secondary">Xóa ghi âm</Button>
+              <Button onClick={() => window?.setActiveTab ? window.setActiveTab('Thi thử') : null} variant="secondary">Thi lại</Button>
+              <Button onClick={() => alert('Tính năng chấm điểm AI sẽ được bổ sung!')} variant="primary">Gửi chấm điểm</Button>
             </div>
           </div>
         )}

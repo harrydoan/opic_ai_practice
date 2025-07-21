@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { AppContext } from '../../context/AppContext';
 import Button from '../common/Button';
 import { speakText } from '../../utils/speech';
@@ -37,35 +37,33 @@ const RewriteTab = () => {
     setHintWords(getHintWords(sentenceData[idx].originalText));
   };
 
-  // So sánh câu người dùng nhập với câu gốc
+  // Tự động chọn câu khi vào tab hoặc sau khi bấm Câu tiếp theo
+  useEffect(() => {
+    if (currentIdx === null && sentenceData && sentenceData.length > 0) {
+      pickRandomSentence();
+    }
+    // eslint-disable-next-line
+  }, [sentenceData]);
+
+  // So sánh câu người dùng nhập với câu gốc, chỉ bôi đỏ từ thiếu
   const checkAnswer = () => {
     if (currentIdx === null) return;
     const original = sentenceData[currentIdx].originalText.trim();
     const user = userInput.trim();
     const originalWords = original.split(/\s+/);
     const userWords = user.split(/\s+/);
-    let correct = true;
     let missing = [];
-    let extra = [];
-    // Kiểm tra thiếu từ
     for (let w of originalWords) {
       if (!userWords.includes(w)) missing.push(w);
     }
-    // Kiểm tra thừa từ
-    for (let w of userWords) {
-      if (!originalWords.includes(w)) extra.push(w);
-    }
-    if (missing.length > 0 || extra.length > 0) correct = false;
-    setResult({ correct, missing, extra, original });
+    setResult({ missing, original });
     setShowAnswer(true);
   };
 
+  // XÓA UI CŨ, chỉ giữ UI mới đẹp hơn phía dưới
   return (
     <div style={{ maxWidth: 600, margin: '0 auto', padding: 24 }}>
-      <h2>Luyện tập viết lại câu</h2>
-      <Button onClick={pickRandomSentence}>
-        Chọn câu ngẫu nhiên
-      </Button>
+      <h2 style={{ color: '#1976d2', marginBottom: 16 }}>Luyện tập viết lại câu</h2>
       {currentIdx !== null && (
         <div style={{ marginTop: 24 }}>
           <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -82,42 +80,41 @@ const RewriteTab = () => {
               </svg>
             </button>
           </div>
-          <div style={{ marginBottom: 8 }}>
-            Gợi ý: Xuất hiện {hintWords.length} từ trong câu: <span style={{ color: '#4facfe', fontWeight: 500 }}>{hintWords.join(', ')}</span>
-          </div>
           <textarea
             rows={3}
             value={userInput}
             onChange={e => setUserInput(e.target.value)}
             placeholder="Viết lại câu ở đây..."
-            style={{ width: '100%', marginBottom: 8 }}
+            style={{ width: '100%', fontSize: 20, padding: 16, borderRadius: 10, border: '1.5px solid #90caf9', marginBottom: 12, fontFamily: 'inherit', background: showAnswer ? '#f5f5f5' : '#fff', color: '#222' }}
+            disabled={showAnswer}
           />
-          <Button onClick={checkAnswer} disabled={!userInput.trim()}>
-            Gửi
-          </Button>
-        </div>
-      )}
-      {showAnswer && result && (
-        <div style={{ marginTop: 24 }}>
-          <h4>Kết quả:</h4>
-          {result.correct ? (
-            <div style={{ color: '#28a745', fontWeight: 600 }}>✅ Chính xác!</div>
-          ) : (
-            <div style={{ color: '#dc3545', fontWeight: 600 }}>❌ Chưa đúng!</div>
+          {!showAnswer && (
+            <Button onClick={checkAnswer} style={{ marginRight: 12, fontSize: 18, padding: '8px 28px' }}>
+              Gửi
+            </Button>
           )}
-          {result.missing.length > 0 && (
-            <div style={{ color: '#dc3545' }}>Thiếu từ: {result.missing.join(', ')}</div>
+          {showAnswer && result && (
+            <div style={{ marginTop: 16 }}>
+              <div>
+                <strong>Đáp án đúng:</strong>
+                <span style={{ marginLeft: 8 }}>
+                  {sentenceData[currentIdx].originalText.split(/\s+/).map((w, i) =>
+                    result.missing.includes(w)
+                      ? <span key={i} style={{ color: 'red', fontWeight: 600 }}>{w} </span>
+                      : <span key={i}>{w} </span>
+                  )}
+                </span>
+              </div>
+              <Button onClick={() => { pickRandomSentence(); setShowAnswer(false); }} style={{ marginTop: 16, fontSize: 18, padding: '8px 28px' }}>
+                Câu tiếp theo
+              </Button>
+              <Button onClick={() => window?.setActiveTab ? window.setActiveTab('Thi thử') : null} style={{ marginTop: 16, marginLeft: 12, fontSize: 18, padding: '8px 28px' }} variant="secondary">
+                Thi thử
+              </Button>
+            </div>
           )}
-          {result.extra.length > 0 && (
-            <div style={{ color: '#dc3545' }}>Thừa từ: {result.extra.join(', ')}</div>
-          )}
-          <div style={{ marginTop: 8 }}>
-            <strong>Đáp án đúng:</strong> <span style={{ color: '#4facfe' }}>{result.original}</span>
-          </div>
         </div>
       )}
     </div>
   );
-};
-
-export default RewriteTab;
+}
