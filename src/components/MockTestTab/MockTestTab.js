@@ -251,21 +251,3 @@ function getOpicLevelDesc(level) {
 // Giải thích level OPIC
 
 // Giải thích level OPIC
-function getOpicLevelDesc(level) {
-  if (!level) return '';
-  const descs = {
-    'Novice Low': '– Có thể nói các câu rất đơn giản, vốn từ hạn chế.',
-    'Novice Mid': '– Có thể trả lời các câu hỏi cơ bản, phát âm còn nhiều lỗi.',
-    'Novice High': '– Có thể giao tiếp cơ bản, còn hạn chế về ngữ pháp.',
-    'Intermediate Low': '– Có thể trình bày ý đơn giản, còn thiếu tự nhiên.',
-    'Intermediate Mid': '– Giao tiếp tốt các chủ đề quen thuộc, còn mắc lỗi nhỏ.',
-    'Intermediate High': '– Giao tiếp đa dạng, diễn đạt khá tự nhiên.',
-    'Advanced Low': '– Giao tiếp tốt, diễn đạt ý phức tạp, phát âm tốt.',
-    'Advanced Mid': '– Giao tiếp lưu loát, tự nhiên, kiểm soát tốt ngôn ngữ.',
-    'Advanced High': '– Gần như người bản xứ, rất ít lỗi.',
-    'Superior': '– Giao tiếp như người bản xứ, diễn đạt xuất sắc.',
-    'Intermediate': '– Trình độ trung bình, có thể giao tiếp các chủ đề quen thuộc.',
-    'Advanced': '– Trình độ cao, giao tiếp tốt nhiều chủ đề.',
-  };
-  return descs[level] ? `(${descs[level]})` : '';
-}
