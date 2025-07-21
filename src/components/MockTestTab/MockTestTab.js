@@ -6,7 +6,7 @@ import './MockTestTab.css';
 const MOCK_TEST_TIME = 120; // seconds
 
 const MockTestTab = () => {
-  const { sentenceData } = useContext(AppContext);
+  // const { sentenceData } = useContext(AppContext); // Removed unused variable
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const [timer, setTimer] = useState(MOCK_TEST_TIME);
