@@ -7,9 +7,9 @@ import './MockTestTab.css';
 
 import { callOpenRouterAPI } from '../../api/openRouterAPI';
 
+
 // Hàm gửi bản ghi âm và câu hỏi lên AI thực tế để chấm điểm
 async function sendAudioToAI(audioBlob, questionText) {
-  // Chuyển audioBlob sang base64
   const toBase64 = blob => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve(reader.result.split(',')[1]);
@@ -17,10 +17,8 @@ async function sendAudioToAI(audioBlob, questionText) {
     reader.readAsDataURL(blob);
   });
   const audioBase64 = await toBase64(audioBlob);
-  // Prompt yêu cầu AI chấm điểm phát âm, nhận xét, đánh giá level
   const prompt = `Bạn là giám khảo OPIC. Hãy đánh giá phát âm, nhận xét điểm mạnh/yếu, và chấm điểm level cho bài nói sau.\nCâu hỏi: ${questionText}\nBản ghi âm (base64, webm): ${audioBase64}\nTrả về JSON với các trường: pronunciation, feedback, level, score.`;
   const result = await callOpenRouterAPI(prompt, undefined, { max_tokens: 400 });
-  // Nếu trả về JSON dạng text, parse ra object
   try {
     if (typeof result === 'string') {
       return JSON.parse(result);
@@ -49,18 +47,9 @@ function getOpicLevelDesc(level) {
     'Advanced': '– Trình độ cao, giao tiếp tốt nhiều chủ đề.',
   };
   return descs[level] ? `(${descs[level]})` : '';
+}
 
-  const playQuestion = () => {
-    if (!question) return;
-    setQuestionWait(true);
-    speakText(question);
-    setTimeout(() => {
-      setQuestionWait(false);
-      setQuestionPlayed(true);
-      setCanReplay(false);
-      startRecording();
-    }, 5000);
-  };
+function MockTestTab() {
 
   // Cho phép nghe lại 1 lần
   const replayQuestion = () => {
