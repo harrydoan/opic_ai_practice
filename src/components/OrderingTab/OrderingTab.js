@@ -15,6 +15,7 @@ const OrderingTab = () => {
 
     // State cho giao diện
     const [selectedAnswer, setSelectedAnswer] = useState(null);
+    const [isAnswered, setIsAnswered] = useState(false);
 
     // Khởi tạo bộ bài ngẫu nhiên khi có dữ liệu
     useEffect(() => {
@@ -119,11 +120,6 @@ const OrderingTab = () => {
                     <div className={`ordering-feedback ${selectedAnswer === correctPosition ? 'success' : 'error'}`}>
                         <h4>{selectedAnswer === correctPosition ? '✅ Chính xác!' : '❌ Sai rồi!'}</h4>
                         <p>Câu này đứng ở vị trí thứ <strong>{correctPosition}</strong>.</p>
-                        <Button onClick={handleNextQuestion} style={{ marginTop: 16 }}>
-                            Next Question →
-                        </Button>
-                    </div>
-                )}
                         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 16 }}>
                           <Button onClick={handleNextQuestion}>
                             Next Question →
@@ -132,6 +128,8 @@ const OrderingTab = () => {
                             Luyện tập viết câu
                           </Button>
                         </div>
+                    </div>
+                )}
             </div>
         </div>
     );
