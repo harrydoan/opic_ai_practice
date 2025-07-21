@@ -9,23 +9,13 @@ function getRandomInt(max) {
 
 export default RewriteTab;
 
-function getHintWords(sentence, percent = 0.2) {
-  const words = sentence.split(/\s+/);
-  const n = Math.max(1, Math.floor(words.length * percent));
-  const idxs = [];
-  while (idxs.length < n) {
-    const idx = getRandomInt(words.length);
-    if (!idxs.includes(idx)) idxs.push(idx);
-  }
-  return idxs.map(i => words[i]);
-}
 
-const RewriteTab = () => {
+
+function RewriteTab() {
   const { sentenceData } = useContext(AppContext);
   const [currentIdx, setCurrentIdx] = useState(null);
   const [userInput, setUserInput] = useState('');
   const [result, setResult] = useState(null);
-  const [hintWords, setHintWords] = useState([]);
   const [showAnswer, setShowAnswer] = useState(false);
 
   // Chọn ngẫu nhiên 1 câu
