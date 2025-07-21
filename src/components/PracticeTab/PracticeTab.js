@@ -27,7 +27,7 @@ function pickRandomWords(sentence, n) {
 const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
 
 const PracticeTab = () => {
-  const { sentenceData, selectedModel } = useContext(AppContext);
+  const { sentenceData, selectedModel, setActiveTab } = useContext(AppContext);
 
   const [numBlanks, setNumBlanks] = useState(1); // số từ che hiện tại
   const [pendingNumBlanks, setPendingNumBlanks] = useState(1); // số từ che sẽ dùng cho câu tiếp theo
@@ -317,9 +317,14 @@ const PracticeTab = () => {
             }}
             isLoading={feedbackLoading}
           />
-          <Button onClick={handleNextQuestion} style={{ alignSelf: 'center', minWidth: 160, fontWeight: 600 }}>
-            Next Question →
-          </Button>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+            <Button onClick={handleNextQuestion} style={{ minWidth: 160, fontWeight: 600 }}>
+              Next Question →
+            </Button>
+            <Button onClick={() => setActiveTab('Sắp xếp câu')} style={{ minWidth: 180, fontWeight: 600 }} variant="secondary">
+              Luyện tập sắp xếp câu
+            </Button>
+          </div>
         </div>
       )}
     </div>

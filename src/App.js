@@ -6,6 +6,7 @@ import PracticeTab from './components/PracticeTab/PracticeTab';
 import OrderingTab from './components/OrderingTab/OrderingTab';
 import Card from './components/common/Card';
 import RewriteTab from './components/RewriteTab/RewriteTab';
+import MockTestTab from './components/MockTestTab/MockTestTab';
 
 function App() {
   const { activeTab } = useContext(AppContext);
@@ -18,12 +19,13 @@ function App() {
       </header>
       <main>
         <Card>
-          <Tabs tabs={['Nhập liệu', 'Luyện tập', 'Sắp xếp câu', 'Viết lại câu']} />
+          <Tabs tabs={['Nhập liệu', 'Luyện tập', 'Sắp xếp câu', 'Viết lại câu', 'Thi thử']} />
           <div className="tab-content">
             {activeTab === 'Nhập liệu' && <InputTab />}
             {activeTab === 'Luyện tập' && <PracticeTab />}
             {activeTab === 'Sắp xếp câu' && <OrderingTab />}
             {activeTab === 'Viết lại câu' && <RewriteTab />}
+            {activeTab === 'Thi thử' && <MockTestTab />}
           </div>
         </Card>
       </main>

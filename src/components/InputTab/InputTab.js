@@ -57,12 +57,17 @@ const InputTab = () => {
     setIsLoading(false);
   };
 
+  const [processError, setProcessError] = useState('');
   const handleProcessText = () => {
+    setProcessError('');
     const extractedSentences = opicText
       .split(/[.!?]+/)
       .map(s => s.trim())
       .filter(s => s.length > 10 && s.split(' ').length >= 5);
-    if (extractedSentences.length === 0) return;
+    if (extractedSentences.length === 0) {
+      setProcessError('Không tìm thấy câu hợp lệ. Vui lòng kiểm tra lại nội dung!');
+      return;
+    }
     const initialSentenceData = extractedSentences.map((text, index) => ({
       originalText: text,
       originalIndex: index,
@@ -133,10 +138,23 @@ const InputTab = () => {
         placeholder="Dán câu hỏi và câu trả lời OPIC vào đây hoặc nhấn nút lấy câu hỏi."
         style={{ marginBottom: 8 }}
       />
+      {processError && (
+        <div style={{ color: 'red', marginTop: 8 }}>{processError}</div>
+      )}
       {opicText && (
         <div className="preview-section">
           <h4>Xem trước nội dung</h4>
-          <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{opicText}</pre>
+          <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            {opicText.split('\n').map((line, idx) => {
+              if (/^question[:：]/i.test(line)) {
+                return <span key={idx} style={{ color: '#1976d2', fontWeight: 'bold' }}>{line}\n</span>;
+              }
+              if (/^(sample answer|answer|câu trả lời mẫu|câu trả lời)[:：]/i.test(line)) {
+                return <span key={idx} style={{ color: '#388e3c', fontWeight: 'bold' }}>{line}\n</span>;
+              }
+              return <span key={idx}>{line}\n</span>;
+            })}
+          </pre>
         </div>
       )}
     </div>

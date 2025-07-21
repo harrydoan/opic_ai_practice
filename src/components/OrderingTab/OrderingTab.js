@@ -7,14 +7,13 @@ import './OrderingTab.css';
 const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
 
 const OrderingTab = () => {
-    const { sentenceData } = useContext(AppContext);
+    const { sentenceData, setActiveTab } = useContext(AppContext);
 
     // Bộ bài chỉ số câu, lặp lại vô hạn
     const [deck, setDeck] = useState([]);
     const [currentIndex, setCurrentIndex] = useState(0);
 
     // State cho giao diện
-    const [isAnswered, setIsAnswered] = useState(false);
     const [selectedAnswer, setSelectedAnswer] = useState(null);
 
     // Khởi tạo bộ bài ngẫu nhiên khi có dữ liệu
@@ -125,6 +124,14 @@ const OrderingTab = () => {
                         </Button>
                     </div>
                 )}
+                        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 16 }}>
+                          <Button onClick={handleNextQuestion}>
+                            Next Question →
+                          </Button>
+                          <Button onClick={() => setActiveTab('Viết lại câu')} variant="secondary">
+                            Luyện tập viết câu
+                          </Button>
+                        </div>
             </div>
         </div>
     );
