@@ -1,5 +1,4 @@
-import React, { useState, useContext, useRef } from 'react';
-import { AppContext } from '../../context/AppContext';
+import React, { useState, useRef } from 'react';
 import Button from '../common/Button';
 import './MockTestTab.css';
 
