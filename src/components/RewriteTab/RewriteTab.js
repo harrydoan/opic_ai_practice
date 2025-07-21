@@ -7,6 +7,8 @@ function getRandomInt(max) {
   return Math.floor(Math.random() * max);
 }
 
+export default RewriteTab;
+
 function getHintWords(sentence, percent = 0.2) {
   const words = sentence.split(/\s+/);
   const n = Math.max(1, Math.floor(words.length * percent));
