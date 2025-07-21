@@ -50,6 +50,7 @@ function getOpicLevelDesc(level) {
 }
 
 function MockTestTab() {
+  const DURATIONS = [60, 120, 180];
   const { sentenceData } = useContext(AppContext);
   const [selectedDuration, setSelectedDuration] = useState(60); // mặc định 1 phút
   const [isRecording, setIsRecording] = useState(false);
