@@ -5,19 +5,34 @@ import Button from '../common/Button';
 import { speakText } from '../../utils/speech';
 import './MockTestTab.css';
 
-// Hàm giả lập gửi dữ liệu lên AI và nhận kết quả đánh giá
+import { callOpenRouterAPI } from '../../api/openRouterAPI';
+
+// Hàm gửi bản ghi âm và câu hỏi lên AI thực tế để chấm điểm
 async function sendAudioToAI(audioBlob, questionText) {
-  // Ở đây bạn sẽ gọi API thực tế, demo trả về kết quả giả lập
-  return new Promise(resolve => {
-    setTimeout(() => {
-      resolve({
-        pronunciation: 'Tốt, nhưng cần chú ý phát âm từ "opportunity"',
-        feedback: 'Bạn nói khá trôi chảy, cần luyện thêm ngữ điệu.',
-        level: 'Intermediate',
-        score: 7.5
-      });
-    }, 2000);
+  // Chuyển audioBlob sang base64
+  const toBase64 = blob => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
   });
+  const audioBase64 = await toBase64(audioBlob);
+  // Prompt yêu cầu AI chấm điểm phát âm, nhận xét, đánh giá level
+  const prompt = `Bạn là giám khảo OPIC. Hãy đánh giá phát âm, nhận xét điểm mạnh/yếu, và chấm điểm level cho bài nói sau.\nCâu hỏi: ${questionText}\nBản ghi âm (base64, webm): ${audioBase64}\nTrả về JSON với các trường: pronunciation, feedback, level, score.`;
+  const result = await callOpenRouterAPI(prompt, undefined, { max_tokens: 400 });
+  // Nếu trả về JSON dạng text, parse ra object
+  try {
+    if (typeof result === 'string') {
+      const jsonStart = result.indexOf('{');
+      const jsonEnd = result.lastIndexOf('}');
+      if (jsonStart !== -1 && jsonEnd !== -1) {
+        return JSON.parse(result.substring(jsonStart, jsonEnd + 1));
+      }
+    }
+    return result;
+  } catch (e) {
+    return { pronunciation: '', feedback: result, level: '', score: '' };
+  }
 }
 
 const DURATIONS = [60, 120, 180];
@@ -231,13 +246,54 @@ const MockTestTab = () => {
             <div style={{ fontWeight: 700, color: '#1976d2', marginBottom: 6 }}>Kết quả AI đánh giá:</div>
             <div><b>Phát âm:</b> {aiResult.pronunciation}</div>
             <div><b>Nhận xét:</b> {aiResult.feedback}</div>
-            <div><b>Level:</b> {aiResult.level}</div>
+            <div><b>Level:</b> {aiResult.level} <span style={{ color: '#888', fontSize: 13 }}>{getOpicLevelDesc(aiResult.level)}</span></div>
             <div><b>Điểm:</b> {aiResult.score}</div>
           </div>
         )}
+
+// Giải thích level OPIC
+function getOpicLevelDesc(level) {
+  if (!level) return '';
+  const descs = {
+    'Novice Low': '– Có thể nói các câu rất đơn giản, vốn từ hạn chế.',
+    'Novice Mid': '– Có thể trả lời các câu hỏi cơ bản, phát âm còn nhiều lỗi.',
+    'Novice High': '– Có thể giao tiếp cơ bản, còn hạn chế về ngữ pháp.',
+    'Intermediate Low': '– Có thể trình bày ý đơn giản, còn thiếu tự nhiên.',
+    'Intermediate Mid': '– Giao tiếp tốt các chủ đề quen thuộc, còn mắc lỗi nhỏ.',
+    'Intermediate High': '– Giao tiếp đa dạng, diễn đạt khá tự nhiên.',
+    'Advanced Low': '– Giao tiếp tốt, diễn đạt ý phức tạp, phát âm tốt.',
+    'Advanced Mid': '– Giao tiếp lưu loát, tự nhiên, kiểm soát tốt ngôn ngữ.',
+    'Advanced High': '– Gần như người bản xứ, rất ít lỗi.',
+    'Superior': '– Giao tiếp như người bản xứ, diễn đạt xuất sắc.',
+    'Intermediate': '– Trình độ trung bình, có thể giao tiếp các chủ đề quen thuộc.',
+    'Advanced': '– Trình độ cao, giao tiếp tốt nhiều chủ đề.',
+  };
+  return descs[level] ? `(${descs[level]})` : '';
+}
       </div>
     </div>
   );
 };
 
+
 export default MockTestTab;
+
+// Giải thích level OPIC
+function getOpicLevelDesc(level) {
+  if (!level) return '';
+  const descs = {
+    'Novice Low': '– Có thể nói các câu rất đơn giản, vốn từ hạn chế.',
+    'Novice Mid': '– Có thể trả lời các câu hỏi cơ bản, phát âm còn nhiều lỗi.',
+    'Novice High': '– Có thể giao tiếp cơ bản, còn hạn chế về ngữ pháp.',
+    'Intermediate Low': '– Có thể trình bày ý đơn giản, còn thiếu tự nhiên.',
+    'Intermediate Mid': '– Giao tiếp tốt các chủ đề quen thuộc, còn mắc lỗi nhỏ.',
+    'Intermediate High': '– Giao tiếp đa dạng, diễn đạt khá tự nhiên.',
+    'Advanced Low': '– Giao tiếp tốt, diễn đạt ý phức tạp, phát âm tốt.',
+    'Advanced Mid': '– Giao tiếp lưu loát, tự nhiên, kiểm soát tốt ngôn ngữ.',
+    'Advanced High': '– Gần như người bản xứ, rất ít lỗi.',
+    'Superior': '– Giao tiếp như người bản xứ, diễn đạt xuất sắc.',
+    'Intermediate': '– Trình độ trung bình, có thể giao tiếp các chủ đề quen thuộc.',
+    'Advanced': '– Trình độ cao, giao tiếp tốt nhiều chủ đề.',
+  };
+  return descs[level] ? `(${descs[level]})` : '';
+}

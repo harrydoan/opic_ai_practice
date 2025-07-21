@@ -12,7 +12,7 @@ export default RewriteTab;
 
 
 function RewriteTab() {
-  const { sentenceData } = useContext(AppContext);
+  const { sentenceData, setActiveTab } = useContext(AppContext);
   const [currentIdx, setCurrentIdx] = useState(null);
   const [userInput, setUserInput] = useState('');
   const [result, setResult] = useState(null);
@@ -101,16 +101,7 @@ function RewriteTab() {
                   Câu tiếp theo
                 </Button>
                 <Button
-                  onClick={() => {
-                    // Chuyển tab qua Thi thử bằng AppContext nếu có
-                    if (typeof window !== 'undefined' && window.setActiveTab) {
-                      window.setActiveTab('Thi thử');
-                    } else if (typeof document !== 'undefined') {
-                      // fallback: tìm AppContext qua sự kiện custom
-                      const evt = new CustomEvent('setActiveTab', { detail: 'Thi thử' });
-                      window.dispatchEvent(evt);
-                    }
-                  }}
+                  onClick={() => setActiveTab && setActiveTab('Thi thử')}
                   style={{ fontSize: 18, padding: '8px 28px', marginLeft: 0 }}
                   variant="secondary"
                 >

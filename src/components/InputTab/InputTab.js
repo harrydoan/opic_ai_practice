@@ -34,6 +34,18 @@ const InputTab = () => {
     opicText, setOpicText
   } = useContext(AppContext);
 
+  // Lưu và tải lại dữ liệu luyện tập từ localStorage
+  const savePracticeData = () => {
+    if (!opicText) return;
+    localStorage.setItem('opic_practice_text', opicText);
+    alert('Đã lưu bài luyện tập!');
+  };
+  const loadPracticeData = () => {
+    const saved = localStorage.getItem('opic_practice_text');
+    if (saved) setOpicText(saved);
+    else alert('Không có dữ liệu đã lưu!');
+  };
+
   const handleFetchData = async () => {
     setIsLoading(true);
     let levelText = '';
@@ -117,6 +129,12 @@ const InputTab = () => {
         </Button>
         <Button onClick={handleProcessText} disabled={!opicText || isLoading} variant="secondary">
           Xử lý văn bản
+        </Button>
+        <Button onClick={savePracticeData} disabled={!opicText} variant="secondary">
+          Lưu bài luyện tập
+        </Button>
+        <Button onClick={loadPracticeData} variant="secondary">
+          Tải bài đã lưu
         </Button>
         <button
           aria-label="Nghe toàn bộ nội dung"
