@@ -1,4 +1,18 @@
 import React, { useState, useRef, useContext } from 'react';
+// Hàm giả lập gửi dữ liệu lên AI và nhận kết quả đánh giá
+async function sendAudioToAI(audioBlob, questionText) {
+  // Ở đây bạn sẽ gọi API thực tế, demo trả về kết quả giả lập
+  return new Promise(resolve => {
+    setTimeout(() => {
+      resolve({
+        pronunciation: 'Tốt, nhưng cần chú ý phát âm từ "opportunity"',
+        feedback: 'Bạn nói khá trôi chảy, cần luyện thêm ngữ điệu.',
+        level: 'Intermediate',
+        score: 7.5
+      });
+    }, 2000);
+  });
+}
 import { AppContext } from '../../context/AppContext';
 import Button from '../common/Button';
 import { speakText } from '../../utils/speech';
@@ -19,6 +33,8 @@ const MockTestTab = () => {
   const mediaRecorderRef = useRef(null);
   const timerRef = useRef(null);
   const [error, setError] = useState('');
+  const [aiResult, setAiResult] = useState(null);
+  const [isSending, setIsSending] = useState(false);
 
   // Lấy câu hỏi đầu tiên
   const question = sentenceData && sentenceData.length > 0 ? sentenceData[0].originalText : '';
@@ -176,20 +192,47 @@ const MockTestTab = () => {
                 variant="secondary"
               >Thi lại</Button>
               <Button
-                onClick={() => {
-                  // Gửi dữ liệu ghi âm cho AI chấm điểm (demo: alert)
-                  if (audioUrl) {
-                    alert('Đã gửi dữ liệu ghi âm cho AI chấm điểm! (Demo)');
-                  } else {
+                onClick={async () => {
+                  if (!audioUrl) {
                     alert('Bạn cần ghi âm trước khi gửi chấm điểm!');
+                    return;
                   }
+                  setIsSending(true);
+                  setAiResult(null);
+                  // Lấy blob từ audioUrl
+                  try {
+                    const response = await fetch(audioUrl);
+                    const audioBlob = await response.blob();
+                    const result = await sendAudioToAI(audioBlob, question);
+                    setAiResult(result);
+                  } catch (e) {
+                    setError('Gửi dữ liệu thất bại!');
+                  }
+                  setIsSending(false);
                 }}
                 variant="primary"
-              >Gửi chấm điểm</Button>
+                disabled={isSending}
+              >{isSending ? 'Đang gửi...' : 'Gửi chấm điểm'}</Button>
             </div>
           </div>
         )}
         {isFinished && <div style={{ color: '#388e3c', marginTop: 8 }}>Đã kết thúc phần thi thử!</div>}
+        {aiResult && (
+          <div style={{
+            marginTop: 18,
+            background: '#f5f5f5',
+            borderRadius: 12,
+            padding: 16,
+            maxWidth: 400,
+            boxShadow: '0 1px 6px rgba(0,0,0,0.07)'
+          }}>
+            <div style={{ fontWeight: 700, color: '#1976d2', marginBottom: 6 }}>Kết quả AI đánh giá:</div>
+            <div><b>Phát âm:</b> {aiResult.pronunciation}</div>
+            <div><b>Nhận xét:</b> {aiResult.feedback}</div>
+            <div><b>Level:</b> {aiResult.level}</div>
+            <div><b>Điểm:</b> {aiResult.score}</div>
+          </div>
+        )}
       </div>
     </div>
   );
