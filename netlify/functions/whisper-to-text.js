@@ -53,9 +53,15 @@ exports.handler = async function(event, context) {
       } catch {
         errJson = { message: errText };
       }
+      // Trả về chi tiết mã lỗi, type, message nếu có
       return {
         statusCode: response.status,
-        body: JSON.stringify({ error: errJson.message || errJson.error || errText, code: response.status })
+        body: JSON.stringify({
+          error: errJson.message || errJson.error || errText,
+          code: response.status,
+          type: errJson.type || undefined,
+          details: errJson
+        })
       };
     }
     const transcript = await response.text();
