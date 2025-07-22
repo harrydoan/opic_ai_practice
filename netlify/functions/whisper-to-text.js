@@ -1,6 +1,8 @@
+
 const fetch = require('node-fetch');
 const FormData = require('form-data');
 const fs = require('fs');
+
 
 exports.handler = async function(event, context) {
   try {
@@ -10,6 +12,7 @@ exports.handler = async function(event, context) {
         body: JSON.stringify({ error: 'Method Not Allowed' })
       };
     }
+
     const { audio, mimeType } = JSON.parse(event.body || '{}');
     if (!audio) {
       return {
@@ -17,6 +20,7 @@ exports.handler = async function(event, context) {
         body: JSON.stringify({ error: 'No audio data' })
       };
     }
+
     // Giải mã base64 thành buffer
     const buffer = Buffer.from(audio, 'base64');
     fs.writeFileSync('/tmp/temp_audio', buffer);
@@ -45,6 +49,7 @@ exports.handler = async function(event, context) {
     });
 
     fs.unlinkSync('/tmp/temp_audio');
+
     if (!response.ok) {
       let errText = await response.text();
       let errJson;
@@ -64,6 +69,7 @@ exports.handler = async function(event, context) {
         })
       };
     }
+
     const transcript = await response.text();
     return {
       statusCode: 200,
