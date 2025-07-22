@@ -5,29 +5,28 @@ import Button from '../common/Button';
 import { speakText } from '../../utils/speech';
 import './MockTestTab.css';
 
-import { callOpenRouterAPI } from '../../api/openRouterAPI';
+// import { callOpenRouterAPI } from '../../api/openRouterAPI';
 
 
-// Hàm gửi bản ghi âm và câu hỏi lên AI thực tế để chấm điểm
-async function sendAudioToAI(audioBlob, questionText) {
-  const toBase64 = blob => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result.split(',')[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-  const audioBase64 = await toBase64(audioBlob);
-  // Prompt chỉ yêu cầu chuyển voice thành text tiếng Anh
-  const prompt = `You are a speech-to-text AI. Listen to the following audio (base64, webm) and transcribe it to English text ONLY. Do not use Vietnamese or any other language.\nAudio (base64, webm): ${audioBase64}\nReturn a JSON object with one field: transcript (the English text you heard). IMPORTANT: Only return the JSON, do not add any explanation or extra text.`;
-  const result = await callOpenRouterAPI(prompt, undefined, { max_tokens: 800 });
-  try {
-    if (typeof result === 'string') {
-      return JSON.parse(result);
-    }
-    return result;
-  } catch {
-    return { transcript: '' };
+// Hàm chuyển voice thành text bằng Google Web Speech API
+function speechToText(callback, lang = 'en-US') {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    callback('Trình duyệt không hỗ trợ SpeechRecognition!');
+    return;
   }
+  const recognition = new SpeechRecognition();
+  recognition.lang = lang;
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript;
+    callback(transcript);
+  };
+  recognition.onerror = (event) => {
+    callback('Lỗi nhận diện giọng nói: ' + event.error);
+  };
+  recognition.start();
 }
 
 
@@ -46,8 +45,7 @@ function MockTestTab() {
   const mediaRecorderRef = useRef(null);
   const timerRef = useRef(null);
   const [error, setError] = useState('');
-  const [aiResult, setAiResult] = useState(null);
-  const [isSending, setIsSending] = useState(false);
+  const [transcript, setTranscript] = useState('');
 
   // Lấy câu hỏi đầu tiên
   const question = sentenceData && sentenceData.length > 0 ? sentenceData[0].originalText : '';
@@ -210,32 +208,18 @@ function MockTestTab() {
                 variant="secondary"
               >Thi lại</Button>
               <Button
-                onClick={async () => {
-                  if (!audioUrl) {
-                    alert('Bạn cần ghi âm trước khi gửi chấm điểm!');
-                    return;
-                  }
-                  setIsSending(true);
-                  setAiResult(null);
-                  // Lấy blob từ audioUrl
-                  try {
-                    const response = await fetch(audioUrl);
-                    const audioBlob = await response.blob();
-                    const result = await sendAudioToAI(audioBlob, question);
-                    setAiResult(result);
-                  } catch (e) {
-                    setError('Gửi dữ liệu thất bại!');
-                  }
-                  setIsSending(false);
+                onClick={() => {
+                  setTranscript('');
+                  speechToText((text) => setTranscript(text));
                 }}
                 variant="primary"
-                disabled={isSending}
-              >{isSending ? 'Đang gửi...' : 'Gửi chấm điểm'}</Button>
+                style={{ fontSize: 18, padding: '10px 24px', borderRadius: 18, marginTop: 8 }}
+              >Chuyển voice thành text (Google)</Button>
             </div>
           </div>
         )}
         {isFinished && <div style={{ color: '#388e3c', marginTop: 8 }}>Đã kết thúc phần thi thử!</div>}
-        {aiResult && (
+        {transcript && (
           <div style={{
             marginTop: 18,
             background: '#f5f5f5',
@@ -244,14 +228,10 @@ function MockTestTab() {
             maxWidth: 400,
             boxShadow: '0 1px 6px rgba(0,0,0,0.07)'
           }}>
-            <div style={{ fontWeight: 700, color: '#1976d2', marginBottom: 6 }}>Kết quả chuyển đổi giọng nói thành văn bản:</div>
-            {aiResult.transcript ? (
-              <div style={{ background: '#fff', borderRadius: 6, padding: 8, marginTop: 4, fontStyle: 'italic', color: '#333', border: '1px solid #90caf9' }}>
-                {aiResult.transcript}
-              </div>
-            ) : (
-              <div style={{ color: 'red', marginTop: 8 }}>Không nhận được kết quả chuyển đổi từ AI.</div>
-            )}
+            <div style={{ fontWeight: 700, color: '#1976d2', marginBottom: 6 }}>Kết quả chuyển voice thành text:</div>
+            <div style={{ background: '#fff', borderRadius: 6, padding: 8, marginTop: 4, fontStyle: 'italic', color: '#333', border: '1px solid #90caf9' }}>
+              {transcript}
+            </div>
           </div>
         )}
       </div>
