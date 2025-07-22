@@ -17,15 +17,16 @@ async function sendAudioToAI(audioBlob, questionText) {
     reader.readAsDataURL(blob);
   });
   const audioBase64 = await toBase64(audioBlob);
-  const prompt = `Bạn là giám khảo OPIC. Hãy đánh giá phát âm, nhận xét điểm mạnh/yếu, và chấm điểm level cho bài nói sau.\nCâu hỏi: ${questionText}\nBản ghi âm (base64, webm): ${audioBase64}\nTrả về JSON với các trường: pronunciation, feedback, level, score.`;
-  const result = await callOpenRouterAPI(prompt, undefined, { max_tokens: 400 });
+  // Prompt yêu cầu AI chuyển audio sang text trước, sau đó đánh giá
+  const prompt = `Bạn là giám khảo OPIC. Trước tiên hãy chuyển bản ghi âm dưới đây thành văn bản tiếng Anh mà bạn nghe được (speech to text). Sau đó đánh giá phát âm, nhận xét điểm mạnh/yếu, và chấm điểm level cho bài nói sau.\nCâu hỏi: ${questionText}\nBản ghi âm (base64, webm): ${audioBase64}\nTrả về JSON với các trường: transcript (text bạn nghe được), pronunciation, feedback, level, score.`;
+  const result = await callOpenRouterAPI(prompt, undefined, { max_tokens: 600 });
   try {
     if (typeof result === 'string') {
       return JSON.parse(result);
     }
     return result;
   } catch {
-    return { pronunciation: '', feedback: 'Lỗi phân tích kết quả AI', level: '', score: '' };
+    return { transcript: '', pronunciation: '', feedback: 'Lỗi phân tích kết quả AI', level: '', score: '' };
   }
 }
 
@@ -50,9 +51,10 @@ function getOpicLevelDesc(level) {
 }
 
 function MockTestTab() {
-  const DURATIONS = [60, 120, 180];
+  const DURATIONS = [60, 90, 120]; // 1 phút, 1.5 phút, 2 phút
+  const DURATION_LABELS = ['1 phút', '1.5 phút', '2 phút'];
   const { sentenceData } = useContext(AppContext);
-  const [selectedDuration, setSelectedDuration] = useState(60); // mặc định 1 phút
+  const [selectedDuration, setSelectedDuration] = useState(DURATIONS[0]); // mặc định 1 phút
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const [timer, setTimer] = useState(60);
@@ -139,24 +141,24 @@ function MockTestTab() {
       <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
         <strong>Chọn thời gian nói:</strong>
         <div style={{ display: 'flex', gap: 8 }}>
-          {DURATIONS.map(sec => (
+          {DURATIONS.map((sec, idx) => (
             <Button
               key={sec}
               onClick={() => setSelectedDuration(sec)}
-              variant={selectedDuration === sec ? undefined : 'secondary'}
+              variant={selectedDuration === sec ? 'primary' : 'secondary'}
               style={{
-                minWidth: 60,
+                minWidth: 80,
                 fontWeight: selectedDuration === sec ? 700 : 400,
-                background: selectedDuration === sec ? '#1976d2' : '#e3e3e3',
-                color: selectedDuration === sec ? '#fff' : '#333',
-                border: selectedDuration === sec ? '2px solid #1976d2' : '1px solid #bbb',
+                background: selectedDuration === sec ? '#1976d2' : '#e3f2fd',
+                color: selectedDuration === sec ? '#fff' : '#1976d2',
+                border: selectedDuration === sec ? '2px solid #1976d2' : '1px solid #90caf9',
                 fontSize: 18,
                 padding: '6px 20px',
                 borderRadius: 18
               }}
               disabled={isRecording}
             >
-              {sec/60} phút
+              {DURATION_LABELS[idx]}
             </Button>
           ))}
         </div>
@@ -180,29 +182,31 @@ function MockTestTab() {
         >
           {isRecording ? 'Dừng ghi âm' : 'Bắt đầu ghi âm'}
         </Button>
-        <div style={{ width: 320, margin: '12px 0' }}>
-          <div style={{ height: 12, background: '#e3e3e3', borderRadius: 8, overflow: 'hidden' }}>
-            {(() => {
-              const percent = timer / selectedDuration;
-              let barColor = '#1976d2'; // xanh
-              if (percent <= 0.33) barColor = '#e53935'; // đỏ
-              else if (percent <= 0.66) barColor = '#ffc107'; // vàng
-              return (
-                <div
-                  style={{
-                    width: `${percent * 100}%`,
-                    height: '100%',
-                    background: barColor,
-                    transition: 'width 1s linear, background 0.5s',
-                  }}
-                />
-              );
-            })()}
-          </div>
-          <div style={{ textAlign: 'center', fontSize: 20, fontWeight: 'bold', color: timer <= 10 ? '#e53935' : timer/selectedDuration <= 0.66 ? '#ffc107' : '#1976d2', marginTop: 2 }}>
-            {Math.floor(timer/60).toString().padStart(2, '0')}:{(timer%60).toString().padStart(2, '0')}
-          </div>
+      <div style={{ width: 320, margin: '12px 0' }}>
+        <div style={{ height: 12, background: '#e3e3e3', borderRadius: 8, overflow: 'hidden' }}>
+          {(() => {
+            const percent = timer / selectedDuration;
+            let barColor = '#1976d2'; // xanh
+            if (percent <= 0.33) barColor = '#e53935'; // đỏ
+            else if (percent <= 0.66) barColor = '#ffc107'; // vàng
+            return (
+              <div
+                style={{
+                  width: `${percent * 100}%`,
+                  height: '100%',
+                  background: barColor,
+                  transition: 'width 1s linear, background 0.5s',
+                }}
+              />
+            );
+          })()}
         </div>
+        <div style={{ textAlign: 'center', fontSize: 20, fontWeight: 'bold', color: timer <= 10 ? '#e53935' : timer/selectedDuration <= 0.66 ? '#ffc107' : '#1976d2', marginTop: 2 }}>
+          {isRecording
+            ? `${Math.floor(timer/60).toString().padStart(2, '0')}:${(timer%60).toString().padStart(2, '0')}`
+            : `Thời lượng đã chọn: ${DURATION_LABELS[DURATIONS.indexOf(selectedDuration)]}`}
+        </div>
+      </div>
         {error && <div style={{ color: 'red' }}>{error}</div>}
         {audioUrl && (
           <div style={{ marginTop: 16 }}>
@@ -257,6 +261,14 @@ function MockTestTab() {
             boxShadow: '0 1px 6px rgba(0,0,0,0.07)'
           }}>
             <div style={{ fontWeight: 700, color: '#1976d2', marginBottom: 6 }}>Kết quả AI đánh giá:</div>
+            {aiResult.transcript && (
+              <div style={{ marginBottom: 8 }}>
+                <b>Văn bản AI nghe được:</b>
+                <div style={{ background: '#fff', borderRadius: 6, padding: 8, marginTop: 4, fontStyle: 'italic', color: '#333', border: '1px solid #90caf9' }}>
+                  {aiResult.transcript}
+                </div>
+              </div>
+            )}
             <div><b>Phát âm:</b> {aiResult.pronunciation}</div>
             <div><b>Nhận xét:</b> {aiResult.feedback}</div>
             <div><b>Level:</b> {aiResult.level} <span style={{ color: '#888', fontSize: 13 }}>{getOpicLevelDesc(aiResult.level)}</span></div>

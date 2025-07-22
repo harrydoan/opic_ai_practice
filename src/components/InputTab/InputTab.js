@@ -34,16 +34,41 @@ const InputTab = () => {
     opicText, setOpicText
   } = useContext(AppContext);
 
-  // Lưu và tải lại dữ liệu luyện tập từ localStorage
+  // Lưu và tải lại dữ liệu luyện tập từ localStorage với tên file
+  const [showLoadDialog, setShowLoadDialog] = useState(false);
+  const [saveName, setSaveName] = useState('');
+  const [savedFiles, setSavedFiles] = useState([]);
+
+  // Lấy danh sách file đã lưu
+  const refreshSavedFiles = () => {
+    const files = Object.keys(localStorage).filter(k => k.startsWith('opic_practice_'));
+    setSavedFiles(files);
+  };
+
+  // Lưu dữ liệu với tên
   const savePracticeData = () => {
     if (!opicText) return;
-    localStorage.setItem('opic_practice_text', opicText);
-    alert('Đã lưu bài luyện tập!');
+    let name = saveName.trim();
+    if (!name) {
+      name = prompt('Nhập tên cho bài luyện tập:');
+      if (!name) return;
+    }
+    localStorage.setItem('opic_practice_' + name, opicText);
+    setSaveName('');
+    refreshSavedFiles();
+    alert('Đã lưu bài luyện tập với tên: ' + name);
   };
+
+  // Hiển thị danh sách file đã lưu để chọn
   const loadPracticeData = () => {
-    const saved = localStorage.getItem('opic_practice_text');
+    refreshSavedFiles();
+    setShowLoadDialog(true);
+  };
+
+  const handleLoadFile = (key) => {
+    const saved = localStorage.getItem(key);
     if (saved) setOpicText(saved);
-    else alert('Không có dữ liệu đã lưu!');
+    setShowLoadDialog(false);
   };
 
   const handleFetchData = async () => {
@@ -52,7 +77,7 @@ const InputTab = () => {
     if (selectedLevel === 'IM') levelText = 'Intermediate Mid';
     else if (selectedLevel === 'IH') levelText = 'Intermediate High';
     else levelText = 'Advanced Low';
-    const OPIC_PROMPT = `Give me one OPIC question and a sample answer at the ${selectedLevel} (${levelText}) level.\nThe answer should be 150–200 words, natural, fluent, and include personal details and storytelling.\nUse informal spoken English.\nOnly output the question and the answer. Do not include any introductions, labels, titles, or extra text.`;
+    const OPIC_PROMPT = `Give me one OPIC question and a sample answer at the ${selectedLevel} (${levelText}) level.\nThe answer should be 150–200 words, natural, fluent, and include personal details and storytelling.\nUse informal spoken English.\nOnly output the question and the answer. Do not include any introductions, labels, titles, or extra text.\nIMPORTANT: The question and answer must be in ENGLISH ONLY. Do not use any Vietnamese or other languages.`;
     const result = await callOpenRouterAPI(OPIC_PROMPT, selectedModel || 'gpt-3.5-turbo');
     if (result && result.error) {
       let errorMsg = `Lỗi khi kết nối AI: ${result.message}`;
@@ -110,9 +135,34 @@ const InputTab = () => {
   return (
     <div className="input-tab-container">
       <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+        <input
+          type="text"
+          value={saveName}
+          onChange={e => setSaveName(e.target.value)}
+          placeholder="Tên bài luyện tập..."
+          style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #bbb', minWidth: 160 }}
+        />
         <Button onClick={savePracticeData} variant="secondary">Lưu bài luyện tập</Button>
-        <Button onClick={loadPracticeData} variant="secondary">Tải lại bài đã lưu</Button>
+        <Button onClick={loadPracticeData} variant="secondary">Tải bài đã lưu</Button>
       </div>
+
+      {showLoadDialog && (
+        <div style={{ background: '#fff', border: '1.5px solid #90caf9', borderRadius: 10, padding: 16, position: 'absolute', zIndex: 10, top: 80, left: '50%', transform: 'translateX(-50%)', minWidth: 320 }}>
+          <h4>Chọn bài luyện tập đã lưu</h4>
+          {savedFiles.length === 0 ? (
+            <div style={{ color: 'gray' }}>Không có bài luyện tập nào.</div>
+          ) : (
+            <ul style={{ listStyle: 'none', padding: 0 }}>
+              {savedFiles.map(key => (
+                <li key={key} style={{ marginBottom: 8 }}>
+                  <Button onClick={() => handleLoadFile(key)} style={{ minWidth: 180 }}>{key.replace('opic_practice_', '')}</Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Button onClick={() => setShowLoadDialog(false)} variant="secondary" style={{ marginTop: 8 }}>Đóng</Button>
+        </div>
+      )}
       <div className="model-selector">
         <label htmlFor="model-select">Chọn Model AI:</label>
         <select id="model-select" value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}>
