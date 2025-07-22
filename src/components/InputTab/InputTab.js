@@ -139,43 +139,9 @@ const InputTab = () => {
 
   return (
     <div className="input-tab-container">
-      <div style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <input
-          type="text"
-          value={saveName}
-          onChange={e => setSaveName(e.target.value)}
-          placeholder="Tên bài luyện tập..."
-          style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #bbb', minWidth: 160 }}
-        />
-        <Button onClick={savePracticeData} variant="secondary">Lưu bài luyện tập</Button>
-        <Button onClick={loadPracticeData} variant="secondary">Tải bài đã lưu</Button>
-        {savedFiles.length > 0 && (
-          <div style={{ display: 'flex', gap: 8, marginLeft: 16, flexWrap: 'wrap', alignItems: 'center', maxWidth: 320 }}>
-            <span style={{ color: '#1976d2', fontWeight: 500 }}>Danh sách bài đã lưu:</span>
-            {savedFiles.map(key => (
-              <span
-                key={key}
-                onClick={() => handleLoadFile(key)}
-                style={{
-                  cursor: 'pointer',
-                  background: '#e3f2fd',
-                  color: '#1976d2',
-                  borderRadius: 8,
-                  padding: '4px 10px',
-                  fontSize: 14,
-                  marginRight: 4,
-                  border: '1px solid #90caf9',
-                  fontWeight: 500,
-                  transition: 'background 0.2s',
-                  display: 'inline-block'
-                }}
-                title="Bấm để mở bài này"
-              >
-                {key.replace('opic_practice_', '')}
-              </span>
-            ))}
-          </div>
-        )}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 16, justifyContent: 'center', alignItems: 'center' }}>
+        <Button onClick={savePracticeData} variant="secondary" style={{ minWidth: 160, fontSize: 16, borderRadius: 10 }}>Lưu bài luyện tập</Button>
+        <Button onClick={loadPracticeData} variant="secondary" style={{ minWidth: 160, fontSize: 16, borderRadius: 10 }}>Tải bài đã lưu</Button>
       </div>
 
       {showLoadDialog && (
