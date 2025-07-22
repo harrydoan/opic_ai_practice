@@ -134,7 +134,7 @@ const InputTab = () => {
 
   return (
     <div className="input-tab-container">
-      <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'center' }}>
         <input
           type="text"
           value={saveName}
@@ -144,6 +144,21 @@ const InputTab = () => {
         />
         <Button onClick={savePracticeData} variant="secondary">Lưu bài luyện tập</Button>
         <Button onClick={loadPracticeData} variant="secondary">Tải bài đã lưu</Button>
+        {savedFiles.length > 0 && (
+          <div style={{ display: 'flex', gap: 8, marginLeft: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ color: '#1976d2', fontWeight: 500 }}>Đã lưu:</span>
+            {savedFiles.map(key => (
+              <Button
+                key={key}
+                onClick={() => handleLoadFile(key)}
+                variant="secondary"
+                style={{ padding: '4px 10px', borderRadius: 8, fontSize: 14, minWidth: 0 }}
+              >
+                {key.replace('opic_practice_', '')}
+              </Button>
+            ))}
+          </div>
+        )}
       </div>
 
       {showLoadDialog && (
