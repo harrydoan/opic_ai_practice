@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useContext } from 'react';
-import { googleSpeechToText } from '../../api/googleSpeechToText';
+import { whisperSpeechToText } from '../../api/googleSpeechToText';
 import { AppContext } from '../../context/AppContext';
 import Button from '../common/Button';
 import { speakText } from '../../utils/speech';
@@ -197,25 +197,15 @@ function MockTestTab() {
                     return;
                   }
                   try {
-                    // Lấy blob từ audioUrl
                     const response = await fetch(audioUrl);
                     let audioBlob = await response.blob();
-                    // Kiểm tra định dạng, chuyển sang FLAC nếu cần
-                    if (audioBlob.type !== 'audio/flac') {
-                      setTranscript('Đang chuyển đổi sang định dạng FLAC...');
-                      // Sử dụng Web Audio API để chuyển đổi sang FLAC (nếu có thư viện, ví dụ flac.js)
-                      // Nếu không có, cảnh báo người dùng
-                      setTranscript('File ghi âm không phải FLAC. Vui lòng ghi âm bằng định dạng FLAC để nhận diện tốt nhất.');
-                      // return;
-                    }
-                    // Kiểm tra kích thước file
-                    if (audioBlob.size > 10 * 1024 * 1024) {
-                      setTranscript('File ghi âm quá lớn (>10MB), không thể gửi lên Google Cloud.');
+                    if (audioBlob.size > 25 * 1024 * 1024) {
+                      setTranscript('File ghi âm quá lớn (>25MB), không thể gửi lên Whisper API.');
                       return;
                     }
-                    setTranscript('Đang gửi lên Google Cloud...');
+                    setTranscript('Đang gửi lên OpenAI Whisper...');
                     try {
-                      const text = await googleSpeechToText(audioBlob);
+                      const text = await whisperSpeechToText(audioBlob);
                       setTranscript(text || 'Không nhận diện được nội dung.');
                     } catch (apiErr) {
                       setTranscript('Lỗi API: ' + (apiErr.message || apiErr.code || 'Unknown error'));
@@ -226,7 +216,7 @@ function MockTestTab() {
                 }}
                 variant="primary"
                 style={{ fontSize: 18, padding: '10px 24px', borderRadius: 18, marginTop: 8 }}
-              >Chuyển file ghi âm thành text (Google Cloud)</Button>
+              >Chuyển file ghi âm thành text (Whisper)</Button>
             </div>
           </div>
         )}
