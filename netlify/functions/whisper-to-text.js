@@ -46,10 +46,16 @@ exports.handler = async function(event, context) {
 
     fs.unlinkSync('/tmp/temp_audio');
     if (!response.ok) {
-      const err = await response.text();
+      let errText = await response.text();
+      let errJson;
+      try {
+        errJson = JSON.parse(errText);
+      } catch {
+        errJson = { message: errText };
+      }
       return {
-        statusCode: 500,
-        body: JSON.stringify({ error: err })
+        statusCode: response.status,
+        body: JSON.stringify({ error: errJson.message || errJson.error || errText, code: response.status })
       };
     }
     const transcript = await response.text();
