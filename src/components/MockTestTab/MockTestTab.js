@@ -192,14 +192,34 @@ function MockTestTab() {
               <Button
                 onClick={async () => {
                   setTranscript('');
-                  if (!audioUrl) return;
+                  if (!audioUrl) {
+                    setTranscript('Không có file ghi âm.');
+                    return;
+                  }
                   try {
                     // Lấy blob từ audioUrl
                     const response = await fetch(audioUrl);
-                    const audioBlob = await response.blob();
-                    setTranscript('Đang chuyển đổi...');
-                    const text = await googleSpeechToText(audioBlob);
-                    setTranscript(text || 'Không nhận diện được nội dung.');
+                    let audioBlob = await response.blob();
+                    // Kiểm tra định dạng, chuyển sang FLAC nếu cần
+                    if (audioBlob.type !== 'audio/flac') {
+                      setTranscript('Đang chuyển đổi sang định dạng FLAC...');
+                      // Sử dụng Web Audio API để chuyển đổi sang FLAC (nếu có thư viện, ví dụ flac.js)
+                      // Nếu không có, cảnh báo người dùng
+                      setTranscript('File ghi âm không phải FLAC. Vui lòng ghi âm bằng định dạng FLAC để nhận diện tốt nhất.');
+                      // return;
+                    }
+                    // Kiểm tra kích thước file
+                    if (audioBlob.size > 10 * 1024 * 1024) {
+                      setTranscript('File ghi âm quá lớn (>10MB), không thể gửi lên Google Cloud.');
+                      return;
+                    }
+                    setTranscript('Đang gửi lên Google Cloud...');
+                    try {
+                      const text = await googleSpeechToText(audioBlob);
+                      setTranscript(text || 'Không nhận diện được nội dung.');
+                    } catch (apiErr) {
+                      setTranscript('Lỗi API: ' + (apiErr.message || apiErr.code || 'Unknown error'));
+                    }
                   } catch (err) {
                     setTranscript('Lỗi chuyển đổi: ' + err.message);
                   }
