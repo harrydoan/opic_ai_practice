@@ -1,5 +1,6 @@
 
 import React, { useState, useRef, useContext } from 'react';
+import { googleSpeechToText } from '../../api/googleSpeechToText';
 import { AppContext } from '../../context/AppContext';
 import Button from '../common/Button';
 import { speakText } from '../../utils/speech';
@@ -211,14 +212,20 @@ function MockTestTab() {
                 onClick={async () => {
                   setTranscript('');
                   if (!audioUrl) return;
-                  // Phát lại audio và nhận diện giọng nói
-                  const audio = new Audio(audioUrl);
-                  audio.play();
-                  speechToText((text) => setTranscript(text));
+                  try {
+                    // Lấy blob từ audioUrl
+                    const response = await fetch(audioUrl);
+                    const audioBlob = await response.blob();
+                    setTranscript('Đang chuyển đổi...');
+                    const text = await googleSpeechToText(audioBlob);
+                    setTranscript(text || 'Không nhận diện được nội dung.');
+                  } catch (err) {
+                    setTranscript('Lỗi chuyển đổi: ' + err.message);
+                  }
                 }}
                 variant="primary"
                 style={{ fontSize: 18, padding: '10px 24px', borderRadius: 18, marginTop: 8 }}
-              >Chuyển file ghi âm thành text (Google)</Button>
+              >Chuyển file ghi âm thành text (Google Cloud)</Button>
             </div>
           </div>
         )}
