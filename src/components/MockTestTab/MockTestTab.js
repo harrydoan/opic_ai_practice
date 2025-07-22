@@ -17,9 +17,9 @@ async function sendAudioToAI(audioBlob, questionText) {
     reader.readAsDataURL(blob);
   });
   const audioBase64 = await toBase64(audioBlob);
-  // Prompt yêu cầu AI chuyển audio sang text trước, sau đó đánh giá
-  const prompt = `Bạn là giám khảo OPIC. Trước tiên hãy chuyển bản ghi âm dưới đây thành văn bản tiếng Anh mà bạn nghe được (speech to text). Sau đó đánh giá phát âm, nhận xét điểm mạnh/yếu, và chấm điểm level cho bài nói sau.\nCâu hỏi: ${questionText}\nBản ghi âm (base64, webm): ${audioBase64}\nTrả về JSON với các trường: transcript (text bạn nghe được), pronunciation, feedback, level, score.`;
-  const result = await callOpenRouterAPI(prompt, undefined, { max_tokens: 600 });
+  // Prompt yêu cầu AI chuyển audio sang tiếng Anh, nhấn mạnh chỉ trả về transcript tiếng Anh và các trường đánh giá
+  const prompt = `You are an OPIC examiner. First, transcribe the following audio (base64, webm) to English text ONLY (speech to text, do not use Vietnamese or any other language). Then, evaluate pronunciation, give feedback, and rate the OPIC level for the answer.\nQuestion: ${questionText}\nAudio (base64, webm): ${audioBase64}\nReturn a JSON object with these fields: transcript (the English text you heard), pronunciation, feedback, level, score. IMPORTANT: Only return the JSON, do not add any explanation or extra text.`;
+  const result = await callOpenRouterAPI(prompt, undefined, { max_tokens: 1200 });
   try {
     if (typeof result === 'string') {
       return JSON.parse(result);
