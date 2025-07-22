@@ -11,6 +11,7 @@ import MockTestTab from './components/MockTestTab/MockTestTab';
   const { activeTab } = useContext(AppContext);
   const [visitorCount, setVisitorCount] = useState(null);
   const [totalVisitorCount, setTotalVisitorCount] = useState(null);
+function App() {
 
   useEffect(() => {
     // Sử dụng countapi.xyz để đếm số truy cập
@@ -52,6 +53,6 @@ import MockTestTab from './components/MockTestTab/MockTestTab';
     </div>
   );
 // ...phần còn lại của App.js
-
+}
 export default App;
 //git add . && git commit -m "Cập nhật logic Tab Sắp xếp và Luyện tập" && git push

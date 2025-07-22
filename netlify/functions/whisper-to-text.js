@@ -58,6 +58,8 @@ exports.handler = async function(event, context) {
       } catch {
         errJson = { message: errText };
       }
+      // Đảm bảo xóa file tạm nếu có lỗi
+      try { fs.unlinkSync('/tmp/temp_audio'); } catch {}
       // Trả về chi tiết mã lỗi, type, message nếu có
       return {
         statusCode: response.status,
