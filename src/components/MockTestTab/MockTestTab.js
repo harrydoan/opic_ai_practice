@@ -17,16 +17,16 @@ async function sendAudioToAI(audioBlob, questionText) {
     reader.readAsDataURL(blob);
   });
   const audioBase64 = await toBase64(audioBlob);
-  // Prompt yêu cầu AI chuyển audio sang tiếng Anh, nhấn mạnh chỉ trả về transcript tiếng Anh và các trường đánh giá
-  const prompt = `You are an OPIC examiner. First, transcribe the following audio (base64, webm) to English text ONLY (speech to text, do not use Vietnamese or any other language). Then, evaluate pronunciation, give feedback, and rate the OPIC level for the answer.\nQuestion: ${questionText}\nAudio (base64, webm): ${audioBase64}\nReturn a JSON object with these fields: transcript (the English text you heard), pronunciation, feedback, level, score. IMPORTANT: Only return the JSON, do not add any explanation or extra text.`;
-  const result = await callOpenRouterAPI(prompt, undefined, { max_tokens: 1200 });
+  // Prompt chỉ yêu cầu chuyển voice thành text tiếng Anh
+  const prompt = `You are a speech-to-text AI. Listen to the following audio (base64, webm) and transcribe it to English text ONLY. Do not use Vietnamese or any other language.\nAudio (base64, webm): ${audioBase64}\nReturn a JSON object with one field: transcript (the English text you heard). IMPORTANT: Only return the JSON, do not add any explanation or extra text.`;
+  const result = await callOpenRouterAPI(prompt, undefined, { max_tokens: 800 });
   try {
     if (typeof result === 'string') {
       return JSON.parse(result);
     }
     return result;
   } catch {
-    return { transcript: '', pronunciation: '', feedback: 'Lỗi phân tích kết quả AI', level: '', score: '' };
+    return { transcript: '' };
   }
 }
 
@@ -263,19 +263,14 @@ function MockTestTab() {
             maxWidth: 400,
             boxShadow: '0 1px 6px rgba(0,0,0,0.07)'
           }}>
-            <div style={{ fontWeight: 700, color: '#1976d2', marginBottom: 6 }}>Kết quả AI đánh giá:</div>
-            {aiResult.transcript && (
-              <div style={{ marginBottom: 8 }}>
-                <b>Văn bản AI nghe được:</b>
-                <div style={{ background: '#fff', borderRadius: 6, padding: 8, marginTop: 4, fontStyle: 'italic', color: '#333', border: '1px solid #90caf9' }}>
-                  {aiResult.transcript}
-                </div>
+            <div style={{ fontWeight: 700, color: '#1976d2', marginBottom: 6 }}>Kết quả chuyển đổi giọng nói thành văn bản:</div>
+            {aiResult.transcript ? (
+              <div style={{ background: '#fff', borderRadius: 6, padding: 8, marginTop: 4, fontStyle: 'italic', color: '#333', border: '1px solid #90caf9' }}>
+                {aiResult.transcript}
               </div>
+            ) : (
+              <div style={{ color: 'red', marginTop: 8 }}>Không nhận được kết quả chuyển đổi từ AI.</div>
             )}
-            <div><b>Phát âm:</b> {aiResult.pronunciation}</div>
-            <div><b>Nhận xét:</b> {aiResult.feedback}</div>
-            <div><b>Level:</b> {aiResult.level} <span style={{ color: '#888', fontSize: 13 }}>{getOpicLevelDesc(aiResult.level)}</span></div>
-            <div><b>Điểm:</b> {aiResult.score}</div>
           </div>
         )}
       </div>
