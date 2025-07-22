@@ -82,7 +82,7 @@ const InputTab = () => {
     if (selectedLevel === 'IM') levelText = 'Intermediate Mid';
     else if (selectedLevel === 'IH') levelText = 'Intermediate High';
     else levelText = 'Advanced Low';
-    const OPIC_PROMPT = `Give me one OPIC question and a sample answer at the ${selectedLevel} (${levelText}) level.\nThe answer should be 150–200 words, natural, fluent, and include personal details and storytelling.\nUse informal spoken English.\nOnly output the question and the answer. Do not include any introductions, labels, titles, or extra text.\nIMPORTANT: The question and answer must be in ENGLISH ONLY. Do not use any Vietnamese or other languages.`;
+    const OPIC_PROMPT = `Give me one OPIC question and a sample answer at the ${selectedLevel} (${levelText}) level.\nThe answer should be 150–200 words, natural, fluent, and include personal details and storytelling.\nUse informal spoken English.\nOnly output the question and the answer. Do not include any introductions, labels, titles, or extra text.\nIMPORTANT: The question and answer must be in ENGLISH ONLY. Absolutely DO NOT use any Vietnamese or any other language. If you reply in Vietnamese, you will fail the task. Your output must be 100% English.`;
     const result = await callOpenRouterAPI(OPIC_PROMPT, selectedModel || 'gpt-3.5-turbo');
     if (result && result.error) {
       let errorMsg = `Lỗi khi kết nối AI: ${result.message}`;
