@@ -185,10 +185,13 @@ function MockTestTab() {
       <div style={{ width: 320, margin: '12px 0' }}>
         <div style={{ height: 12, background: '#e3e3e3', borderRadius: 8, overflow: 'hidden' }}>
           {(() => {
-            const percent = timer / selectedDuration;
-            let barColor = '#1976d2'; // xanh
-            if (percent <= 0.33) barColor = '#e53935'; // đỏ
-            else if (percent <= 0.66) barColor = '#ffc107'; // vàng
+            let percent = 1;
+            let barColor = '#1976d2';
+            if (isRecording) {
+              percent = timer / selectedDuration;
+              if (percent <= 0.33) barColor = '#e53935';
+              else if (percent <= 0.66) barColor = '#ffc107';
+            }
             return (
               <div
                 style={{
@@ -201,7 +204,7 @@ function MockTestTab() {
             );
           })()}
         </div>
-        <div style={{ textAlign: 'center', fontSize: 20, fontWeight: 'bold', color: timer <= 10 ? '#e53935' : timer/selectedDuration <= 0.66 ? '#ffc107' : '#1976d2', marginTop: 2 }}>
+        <div style={{ textAlign: 'center', fontSize: 20, fontWeight: 'bold', color: isRecording ? (timer <= 10 ? '#e53935' : timer/selectedDuration <= 0.66 ? '#ffc107' : '#1976d2') : '#1976d2', marginTop: 2 }}>
           {isRecording
             ? `${Math.floor(timer/60).toString().padStart(2, '0')}:${(timer%60).toString().padStart(2, '0')}`
             : `Thời lượng đã chọn: ${DURATION_LABELS[DURATIONS.indexOf(selectedDuration)]}`}
