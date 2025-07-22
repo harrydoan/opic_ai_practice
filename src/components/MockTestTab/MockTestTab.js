@@ -208,13 +208,17 @@ function MockTestTab() {
                 variant="secondary"
               >Thi lại</Button>
               <Button
-                onClick={() => {
+                onClick={async () => {
                   setTranscript('');
+                  if (!audioUrl) return;
+                  // Phát lại audio và nhận diện giọng nói
+                  const audio = new Audio(audioUrl);
+                  audio.play();
                   speechToText((text) => setTranscript(text));
                 }}
                 variant="primary"
                 style={{ fontSize: 18, padding: '10px 24px', borderRadius: 18, marginTop: 8 }}
-              >Chuyển voice thành text (Google)</Button>
+              >Chuyển file ghi âm thành text (Google)</Button>
             </div>
           </div>
         )}
