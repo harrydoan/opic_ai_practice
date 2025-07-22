@@ -177,22 +177,16 @@ const InputTab = () => {
           <option value="AL">AL (Advanced Low)</option>
         </select>
       </div>
-      <div className="button-group">
-        <Button onClick={handleFetchData} disabled={isLoading}>
+      <div className="button-group" style={{ display: 'flex', gap: 16, marginBottom: 16, justifyContent: 'center', alignItems: 'center' }}>
+        <Button onClick={handleFetchData} disabled={isLoading} style={{ minWidth: 160, fontSize: 16, borderRadius: 10 }}>
           {isLoading ? 'Đang lấy câu hỏi...' : 'Lấy câu hỏi OPIC'}
         </Button>
-        <Button onClick={handleProcessText} disabled={!opicText || isLoading} variant="secondary">
+        <Button onClick={handleProcessText} disabled={!opicText || isLoading} variant="secondary" style={{ minWidth: 160, fontSize: 16, borderRadius: 10 }}>
           Xử lý văn bản
-        </Button>
-        <Button onClick={savePracticeData} disabled={!opicText} variant="secondary">
-          Lưu bài luyện tập
-        </Button>
-        <Button onClick={loadPracticeData} variant="secondary">
-          Tải bài đã lưu
         </Button>
         <button
           aria-label="Nghe toàn bộ nội dung"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, marginLeft: 8 }}
+          style={{ background: '#fff', border: '1.5px solid #90caf9', borderRadius: 10, cursor: 'pointer', padding: '6px 12px', marginLeft: 8, minWidth: 48 }}
           onClick={() => speakText(opicText)}
           disabled={!opicText}
         >
