@@ -27,7 +27,7 @@ function pickRandomWords(sentence, n) {
 const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
 
 const PracticeTab = () => {
-  const { sentenceData, selectedModel, setActiveTab } = useContext(AppContext);
+  const { sentenceData, setActiveTab } = useContext(AppContext);
 
   const [numBlanks, setNumBlanks] = useState(1); // số từ che hiện tại
   const [pendingNumBlanks, setPendingNumBlanks] = useState(1); // số từ che sẽ dùng cho câu tiếp theo
@@ -64,7 +64,7 @@ const PracticeTab = () => {
     for (let i = 0; i < words.length; i++) {
       const prompt = getDistractorPrompt(words[i], sentence);
       try {
-        const res = await callOpenRouterAPI(prompt, selectedModel || 'gpt-3.5-turbo', { max_tokens: 200 });
+        const res = await callOpenRouterAPI(prompt, 'gpt-3.5-turbo', { max_tokens: 200 });
         const arr = JSON.parse(res.match(/\[.*\]/s)[0]);
         distractors = distractors.concat(arr.filter(w => !words.includes(w)));
       } catch (e) {
@@ -73,7 +73,7 @@ const PracticeTab = () => {
     }
     // Loại trùng và cắt còn đủ số lượng
     return Array.from(new Set(distractors)).slice(0, 6 - words.length);
-  }, [selectedModel]);
+  }, []);
 
   // Hàm tạo câu hỏi luyện tập
   const fetchQuestion = useCallback(async () => {
@@ -130,7 +130,7 @@ const PracticeTab = () => {
     let translation = '';
     try {
       const explainPrompt = `Hãy giải thích ngữ pháp của từ "${blankWords[0]}" trong câu: "${sentenceObject.originalText}" (bao gồm từ loại, vai trò, vị trí trong câu, giải thích bằng tiếng Việt). Sau đó dịch toàn bộ câu sang tiếng Việt. Trả về một object JSON với 2 trường: grammar_explanation, translation.`;
-      const res = await callOpenRouterAPI(explainPrompt, selectedModel || 'gpt-3.5-turbo', { max_tokens: 300 });
+      const res = await callOpenRouterAPI(explainPrompt, 'gpt-3.5-turbo', { max_tokens: 300 });
       const obj = JSON.parse(res.match(/{[\s\S]*}/)[0]);
       grammar_explanation = obj.grammar_explanation || '';
       translation = obj.translation || '';
@@ -144,13 +144,13 @@ const PracticeTab = () => {
       translation
     });
     setIsLoading(false);
-  }, [deck, currentIndex, sentenceData, selectedModel, numBlanks, fetchDistractors]);
+  }, [deck, currentIndex, sentenceData, numBlanks, fetchDistractors]);
 
   useEffect(() => {
     if (sentenceData.length > 0 && deck.length > 0 && (typeof currentIndex === 'number')) {
       fetchQuestion();
     }
-  }, [currentIndex, deck, sentenceData, selectedModel, numBlanks, fetchQuestion]);
+  }, [currentIndex, deck, sentenceData, numBlanks, fetchQuestion]);
 
   const handleAnswerSelect = async (answer) => {
     if (isAnswered) return;
@@ -166,7 +166,7 @@ const PracticeTab = () => {
       if (!grammar_explanation || !translation) {
         try {
           const explainPrompt = `Hãy giải thích ngữ pháp của từ "${currentQuestion.correct_answers[0]}" trong câu: "${currentQuestion.question_sentence.replace(/____/g, currentQuestion.correct_answers[0])}" (bao gồm từ loại, vai trò, vị trí trong câu, giải thích bằng tiếng Việt). Sau đó dịch toàn bộ câu sang tiếng Việt. Trả về một object JSON với 2 trường: grammar_explanation, translation.`;
-          const res = await callOpenRouterAPI(explainPrompt, selectedModel || 'gpt-3.5-turbo', { max_tokens: 300 });
+          const res = await callOpenRouterAPI(explainPrompt, 'gpt-3.5-turbo', { max_tokens: 300 });
           let obj = {};
           try {
             // Robustly extract JSON object from response
