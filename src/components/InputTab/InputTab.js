@@ -39,6 +39,11 @@ const InputTab = () => {
   const [saveName, setSaveName] = useState('');
   const [savedFiles, setSavedFiles] = useState([]);
 
+  // Luôn refresh danh sách khi render
+  React.useEffect(() => {
+    refreshSavedFiles();
+  }, []);
+
   // Lấy danh sách file đã lưu
   const refreshSavedFiles = () => {
     const files = Object.keys(localStorage).filter(k => k.startsWith('opic_practice_'));
@@ -134,7 +139,7 @@ const InputTab = () => {
 
   return (
     <div className="input-tab-container">
-      <div style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <input
           type="text"
           value={saveName}
@@ -145,17 +150,29 @@ const InputTab = () => {
         <Button onClick={savePracticeData} variant="secondary">Lưu bài luyện tập</Button>
         <Button onClick={loadPracticeData} variant="secondary">Tải bài đã lưu</Button>
         {savedFiles.length > 0 && (
-          <div style={{ display: 'flex', gap: 8, marginLeft: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ color: '#1976d2', fontWeight: 500 }}>Đã lưu:</span>
+          <div style={{ display: 'flex', gap: 8, marginLeft: 16, flexWrap: 'wrap', alignItems: 'center', maxWidth: 320 }}>
+            <span style={{ color: '#1976d2', fontWeight: 500 }}>Danh sách bài đã lưu:</span>
             {savedFiles.map(key => (
-              <Button
+              <span
                 key={key}
                 onClick={() => handleLoadFile(key)}
-                variant="secondary"
-                style={{ padding: '4px 10px', borderRadius: 8, fontSize: 14, minWidth: 0 }}
+                style={{
+                  cursor: 'pointer',
+                  background: '#e3f2fd',
+                  color: '#1976d2',
+                  borderRadius: 8,
+                  padding: '4px 10px',
+                  fontSize: 14,
+                  marginRight: 4,
+                  border: '1px solid #90caf9',
+                  fontWeight: 500,
+                  transition: 'background 0.2s',
+                  display: 'inline-block'
+                }}
+                title="Bấm để mở bài này"
               >
                 {key.replace('opic_practice_', '')}
-              </Button>
+              </span>
             ))}
           </div>
         )}
