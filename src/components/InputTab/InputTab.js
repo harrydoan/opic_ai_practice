@@ -114,7 +114,7 @@ const InputTab = () => {
     setActiveTab('Luyện tập');
   };
 
-  // Model mặc định đã được cố định trong chương trình, không cho phép chọn
+  // Model AI đã cố định, không cho phép chọn
 
   return (
     <div className="input-tab-container">
@@ -140,7 +140,6 @@ const InputTab = () => {
           <Button onClick={() => setShowLoadDialog(false)} variant="secondary" style={{ marginTop: 8 }}>Đóng</Button>
         </div>
       )}
-      {/* Đã bỏ phần chọn model AI, chỉ dùng model mặc định */}
       <div className="level-selector">
         <label htmlFor="level-select">Chọn Level:</label>
         <select id="level-select" value={selectedLevel} onChange={e => setSelectedLevel(e.target.value)}>
