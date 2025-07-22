@@ -10,25 +10,6 @@ import './MockTestTab.css';
 
 
 // Hàm chuyển voice thành text bằng Google Web Speech API
-function speechToText(callback, lang = 'en-US') {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    callback('Trình duyệt không hỗ trợ SpeechRecognition!');
-    return;
-  }
-  const recognition = new SpeechRecognition();
-  recognition.lang = lang;
-  recognition.interimResults = false;
-  recognition.maxAlternatives = 1;
-  recognition.onresult = (event) => {
-    const transcript = event.results[0][0].transcript;
-    callback(transcript);
-  };
-  recognition.onerror = (event) => {
-    callback('Lỗi nhận diện giọng nói: ' + event.error);
-  };
-  recognition.start();
-}
 
 
 function MockTestTab() {
