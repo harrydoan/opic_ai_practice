@@ -44,7 +44,7 @@ function App() {
 
   return (
     <div className="app-container" style={{ position: 'relative' }}>
-      <div style={{ position: 'absolute', top: 18, right: 18, zIndex: 1000, background: '#fff', borderRadius: 8, padding: '6px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)', fontWeight: 500, color: '#1976d2', fontSize: 15, minWidth: 260 }}>
+      <div style={{ position: 'fixed', top: 0, right: 0, zIndex: 2000, background: '#fff', borderRadius: '0 0 0 12px', padding: '7px 18px 7px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)', fontWeight: 500, color: '#1976d2', fontSize: 15, minWidth: 260, borderBottom: '1.5px solid #e3f2fd', borderLeft: '1.5px solid #e3f2fd' }}>
         {loadingVisitor ? '👥 Đang tải thống kê...' :
           visitorError ? (
             <span style={{ color: 'red' }}>Lỗi thống kê truy cập</span>
