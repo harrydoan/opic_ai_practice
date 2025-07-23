@@ -97,12 +97,7 @@ const InputTab = () => {
   const [processError, setProcessError] = useState('');
   const handleProcessText = () => {
     setProcessError('');
-    // Kiểm tra nếu có tiếng Việt trong nội dung
-    const vietnameseRegex = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
-    if (vietnameseRegex.test(opicText)) {
-      setProcessError('Nội dung chứa tiếng Việt hoặc không phải tiếng Anh. Vui lòng chỉ nhập hoặc sử dụng nội dung tiếng Anh!');
-      return;
-    }
+    // Không kiểm tra tiếng Việt, chỉ tách câu hợp lệ
     const extractedSentences = opicText
       .split(/[.!?]+/)
       .map(s => s.trim())
