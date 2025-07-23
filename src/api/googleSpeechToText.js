@@ -20,20 +20,27 @@ export async function whisperSpeechToText(audioBlob) {
   const audioBase64 = await toBase64(audioBlob);
 
   // Call backend API to OpenAI Whisper
-  const response = await fetch('/api/whisper-to-text', {
+  const response = await fetch('/whisper-to-text', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ audio: audioBase64, mimeType: audioBlob.type })
   });
   if (!response.ok) {
     let errorMsg = 'Whisper API error';
+    let code = response.status;
+    let statusText = response.statusText;
+    let details = '';
     try {
       const errJson = await response.json();
       errorMsg += `: ${errJson.error || JSON.stringify(errJson)}`;
+      if (errJson.code) code = errJson.code;
+      if (errJson.status) code = errJson.status;
+      if (errJson.statusText) statusText = errJson.statusText;
+      if (errJson.details) details = JSON.stringify(errJson.details);
     } catch (e) {
       errorMsg += `: ${response.statusText}`;
     }
-    throw new Error(errorMsg);
+    throw new Error(`${errorMsg} (code: ${code}, status: ${statusText}${details ? ', details: ' + details : ''})`);
   }
   const data = await response.json();
   if (!data.transcript) throw new Error('No transcript returned from API');
