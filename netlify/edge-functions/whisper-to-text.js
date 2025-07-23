@@ -1,4 +1,4 @@
-import { Buffer } from 'node:buffer';
+
 
 export default async (request, context) => {
   try {
@@ -9,8 +9,17 @@ export default async (request, context) => {
     if (!audio) {
       return new Response(JSON.stringify({ error: 'No audio data' }), { status: 400 });
     }
-    // Giải mã base64 thành buffer
-    const buffer = Buffer.from(audio, 'base64');
+    // Giải mã base64 thành buffer (browser/edge compatible)
+    let buffer;
+    if (typeof Buffer !== 'undefined') {
+      buffer = Buffer.from(audio, 'base64');
+    } else {
+      // Polyfill for Buffer in edge runtime
+      const binary = atob(audio);
+      const len = binary.length;
+      buffer = new Uint8Array(len);
+      for (let i = 0; i < len; i++) buffer[i] = binary.charCodeAt(i);
+    }
     // Tạo form data gửi lên OpenAI Whisper
     const formData = new FormData();
     formData.append('file', new Blob([buffer], { type: mimeType || 'audio/webm' }), 'audio.webm');
