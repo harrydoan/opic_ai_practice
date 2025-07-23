@@ -97,23 +97,12 @@ function MockTestTab() {
     clearInterval(timerRef.current);
   };
 
-  const convertToMp3 = async (webmBlob) => {
-    // Nếu browser hỗ trợ MediaRecorder mp3 thì không cần convert
+  // Tạm thời loại bỏ chức năng convert mp3 bằng ffmpeg do không tương thích frontend. Nếu browser hỗ trợ ghi âm mp3 thì dùng luôn, còn không chỉ hỗ trợ tải webm.
+  const convertToMp3 = (webmBlob) => {
     if (webmBlob.type === 'audio/mp3' || webmBlob.type === 'audio/mpeg') {
       setMp3Url(URL.createObjectURL(webmBlob));
-      return;
-    }
-    try {
-      const { createFFmpeg, fetchFile } = await import('@ffmpeg/ffmpeg');
-      const ffmpeg = createFFmpeg({ log: false });
-      await ffmpeg.load();
-      ffmpeg.FS('writeFile', 'input.webm', await fetchFile(webmBlob));
-      await ffmpeg.run('-i', 'input.webm', '-ar', '44100', '-ac', '2', '-b:a', '192k', 'output.mp3');
-      const mp3Data = ffmpeg.FS('readFile', 'output.mp3');
-      const mp3Blob = new Blob([mp3Data.buffer], { type: 'audio/mp3' });
-      setMp3Url(URL.createObjectURL(mp3Blob));
-    } catch (e) {
-      setMp3Url(null);
+    } else {
+      setMp3Url(null); // Không hỗ trợ convert trên frontend, chỉ cho tải webm
     }
   };
 
