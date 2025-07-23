@@ -1,0 +1,6 @@
+[edge_functions]
+  included = ["whisper-to-text"]
+
+[[edge_functions.routes]]
+  path = "/whisper-to-text"
+  function = "whisper-to-text"
