@@ -41,7 +41,9 @@ export default async (request, context) => {
         error: errJson.message || errJson.error || errText,
         code: response.status,
         type: errJson.type || undefined,
-        details: errJson
+        details: errJson,
+        status: response.status,
+        statusText: response.statusText
       }), { status: response.status });
     }
     const transcript = await response.text();
