@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useContext } from 'react';
 import { whisperSpeechToText } from '../../api/googleSpeechToText';
 import { AppContext } from '../../context/AppContext';
@@ -19,6 +18,7 @@ function MockTestTab() {
   const [selectedDuration, setSelectedDuration] = useState(DURATIONS[0]); // mặc định 1 phút
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
+  const [mp3Url, setMp3Url] = useState(null);
   const [timer, setTimer] = useState(60);
   const [isFinished, setIsFinished] = useState(false);
   const [questionPlayed, setQuestionPlayed] = useState(false);
@@ -70,6 +70,7 @@ function MockTestTab() {
       mediaRecorderRef.current.onstop = () => {
         const blob = new Blob(chunks, { type: 'audio/webm' });
         setAudioUrl(URL.createObjectURL(blob));
+        convertToMp3(blob);
       };
       mediaRecorderRef.current.start();
       setIsRecording(true);
@@ -94,6 +95,26 @@ function MockTestTab() {
     setIsRecording(false);
     setIsFinished(true);
     clearInterval(timerRef.current);
+  };
+
+  const convertToMp3 = async (webmBlob) => {
+    // Nếu browser hỗ trợ MediaRecorder mp3 thì không cần convert
+    if (webmBlob.type === 'audio/mp3' || webmBlob.type === 'audio/mpeg') {
+      setMp3Url(URL.createObjectURL(webmBlob));
+      return;
+    }
+    try {
+      const { createFFmpeg, fetchFile } = await import('@ffmpeg/ffmpeg');
+      const ffmpeg = createFFmpeg({ log: false });
+      await ffmpeg.load();
+      ffmpeg.FS('writeFile', 'input.webm', await fetchFile(webmBlob));
+      await ffmpeg.run('-i', 'input.webm', '-ar', '44100', '-ac', '2', '-b:a', '192k', 'output.mp3');
+      const mp3Data = ffmpeg.FS('readFile', 'output.mp3');
+      const mp3Blob = new Blob([mp3Data.buffer], { type: 'audio/mp3' });
+      setMp3Url(URL.createObjectURL(mp3Blob));
+    } catch (e) {
+      setMp3Url(null);
+    }
   };
 
   return (
@@ -176,11 +197,11 @@ function MockTestTab() {
           <div style={{ marginTop: 16 }}>
             <audio controls src={audioUrl} />
             <div style={{ marginTop: 8, display: 'flex', gap: 12, justifyContent: 'center' }}>
-              <Button onClick={() => setAudioUrl(null)} variant="secondary">Xóa ghi âm</Button>
+              <Button onClick={() => { setAudioUrl(null); setMp3Url(null); }} variant="secondary">Xóa ghi âm</Button>
               <Button
                 onClick={() => {
-                  // Reset lại trạng thái để thi lại
                   setAudioUrl(null);
+                  setMp3Url(null);
                   setIsFinished(false);
                   setTimer(selectedDuration);
                   setQuestionPlayed(false);
@@ -217,6 +238,13 @@ function MockTestTab() {
                 variant="primary"
                 style={{ fontSize: 18, padding: '10px 24px', borderRadius: 18, marginTop: 8 }}
               >Chuyển file ghi âm thành text (Whisper)</Button>
+              {mp3Url && (
+                <a href={mp3Url} download="opic_recording.mp3" style={{ textDecoration: 'none' }}>
+                  <Button variant="primary" style={{ fontSize: 18, padding: '10px 24px', borderRadius: 18, marginTop: 8, background: '#388e3c' }}>
+                    Tải file mp3
+                  </Button>
+                </a>
+              )}
             </div>
           </div>
         )}

@@ -17,9 +17,10 @@ exports.handler = async function(event, context) {
       total++;
       fs.writeFileSync(path, JSON.stringify({ count, total }));
     }
-    // Nếu là reset (POST), đặt lại count về 0
+    // Nếu là reset (POST), chỉ đặt lại count về 0, giữ nguyên total
     if (event.httpMethod === 'POST') {
       count = 0;
+      // total giữ nguyên, không reset
       fs.writeFileSync(path, JSON.stringify({ count, total }));
     }
     return {
