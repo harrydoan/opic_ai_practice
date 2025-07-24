@@ -1,5 +1,4 @@
 import React, { useState, useRef, useContext } from 'react';
-import { whisperSpeechToText } from '../../api/googleSpeechToText';
 import { AppContext } from '../../context/AppContext';
 import Button from '../common/Button';
 import { speakText } from '../../utils/speech';
@@ -27,7 +26,7 @@ function MockTestTab() {
   const mediaRecorderRef = useRef(null);
   const timerRef = useRef(null);
   const [error, setError] = useState('');
-  const [transcript, setTranscript] = useState('');
+
 
   // Lấy câu hỏi đầu tiên
   const question = sentenceData && sentenceData.length > 0 ? sentenceData[0].originalText : '';
