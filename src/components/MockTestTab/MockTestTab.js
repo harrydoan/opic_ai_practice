@@ -31,62 +31,23 @@ function MockTestTab() {
     });
   };
 
-  // Convert webm to mp3 using CloudConvert
-  const CLOUDCONVERT_API_KEY = 'YOUR_CLOUDCONVERT_API_KEY'; // <-- Thay bằng API key thật
+  // Convert webm to mp3 using Netlify function (API key is secured on backend)
   const convertToMp3 = async (webmBlob) => {
     setIsConverting(true);
     setCloudConvertError('');
     setMp3Url(null);
     try {
-      // 1. Create import task (base64)
+      // Convert blob to base64
       const base64 = await blobToBase64(webmBlob);
-      const jobRes = await fetch('https://api.cloudconvert.com/v2/jobs', {
+      // Call Netlify function
+      const res = await fetch('/.netlify/functions/convert-webm-to-mp3', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          tasks: {
-            'import-my-file': {
-              operation: 'import/base64',
-              file: base64,
-              filename: 'recording.webm'
-            },
-            'convert-my-file': {
-              operation: 'convert',
-              input: 'import-my-file',
-              input_format: 'webm',
-              output_format: 'mp3',
-              audio_codec: 'mp3'
-            },
-            'export-my-file': {
-              operation: 'export/url',
-              input: 'convert-my-file'
-            }
-          }
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ webmBase64: base64 })
       });
-      const jobData = await jobRes.json();
-      if (!jobData.data || !jobData.data.id) throw new Error('Không tạo được job convert');
-      const jobId = jobData.data.id;
-
-      // 2. Poll trạng thái job
-      let mp3DownloadUrl = null;
-      for (let i = 0; i < 20; i++) {
-        await new Promise(r => setTimeout(r, 3000));
-        const pollRes = await fetch(`https://api.cloudconvert.com/v2/jobs/${jobId}`, {
-          headers: { 'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}` }
-        });
-        const pollData = await pollRes.json();
-        const exportTask = pollData.data.tasks.find(t => t.name === 'export-my-file' && t.status === 'finished');
-        if (exportTask && exportTask.result && exportTask.result.files && exportTask.result.files[0]) {
-          mp3DownloadUrl = exportTask.result.files[0].url;
-          break;
-        }
-      }
-      if (!mp3DownloadUrl) throw new Error('Không lấy được link mp3 từ CloudConvert');
-      setMp3Url(mp3DownloadUrl);
+      const data = await res.json();
+      if (!res.ok || !data.mp3Url) throw new Error(data.body || data.error || 'Không lấy được link mp3');
+      setMp3Url(data.mp3Url);
     } catch (err) {
       setCloudConvertError('Lỗi convert mp3: ' + err.message);
     }
