@@ -18,6 +18,80 @@ function MockTestTab() {
   const [isRecording, setIsRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const [mp3Url, setMp3Url] = useState(null);
+  const [isConverting, setIsConverting] = useState(false);
+  const [cloudConvertError, setCloudConvertError] = useState('');
+
+  // Helper: convert blob to base64
+  const blobToBase64 = (blob) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  // Convert webm to mp3 using CloudConvert
+  const CLOUDCONVERT_API_KEY = 'YOUR_CLOUDCONVERT_API_KEY'; // <-- Thay bằng API key thật
+  const convertToMp3 = async (webmBlob) => {
+    setIsConverting(true);
+    setCloudConvertError('');
+    setMp3Url(null);
+    try {
+      // 1. Create import task (base64)
+      const base64 = await blobToBase64(webmBlob);
+      const jobRes = await fetch('https://api.cloudconvert.com/v2/jobs', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          tasks: {
+            'import-my-file': {
+              operation: 'import/base64',
+              file: base64,
+              filename: 'recording.webm'
+            },
+            'convert-my-file': {
+              operation: 'convert',
+              input: 'import-my-file',
+              input_format: 'webm',
+              output_format: 'mp3',
+              audio_codec: 'mp3'
+            },
+            'export-my-file': {
+              operation: 'export/url',
+              input: 'convert-my-file'
+            }
+          }
+        })
+      });
+      const jobData = await jobRes.json();
+      if (!jobData.data || !jobData.data.id) throw new Error('Không tạo được job convert');
+      const jobId = jobData.data.id;
+
+      // 2. Poll trạng thái job
+      let mp3DownloadUrl = null;
+      for (let i = 0; i < 20; i++) {
+        await new Promise(r => setTimeout(r, 3000));
+        const pollRes = await fetch(`https://api.cloudconvert.com/v2/jobs/${jobId}`, {
+          headers: { 'Authorization': `Bearer ${CLOUDCONVERT_API_KEY}` }
+        });
+        const pollData = await pollRes.json();
+        const exportTask = pollData.data.tasks.find(t => t.name === 'export-my-file' && t.status === 'finished');
+        if (exportTask && exportTask.result && exportTask.result.files && exportTask.result.files[0]) {
+          mp3DownloadUrl = exportTask.result.files[0].url;
+          break;
+        }
+      }
+      if (!mp3DownloadUrl) throw new Error('Không lấy được link mp3 từ CloudConvert');
+      setMp3Url(mp3DownloadUrl);
+    } catch (err) {
+      setCloudConvertError('Lỗi convert mp3: ' + err.message);
+    }
+    setIsConverting(false);
+  };
   const [timer, setTimer] = useState(60);
   const [isFinished, setIsFinished] = useState(false);
   const [questionPlayed, setQuestionPlayed] = useState(false);
@@ -69,7 +143,7 @@ function MockTestTab() {
       mediaRecorderRef.current.onstop = () => {
         const blob = new Blob(chunks, { type: 'audio/webm' });
         setAudioUrl(URL.createObjectURL(blob));
-        convertToMp3(blob);
+        convertToMp3(blob); // Gọi CloudConvert để convert sang mp3
       };
       mediaRecorderRef.current.start();
       setIsRecording(true);
@@ -96,14 +170,6 @@ function MockTestTab() {
     clearInterval(timerRef.current);
   };
 
-  // Tạm thời loại bỏ chức năng convert mp3 bằng ffmpeg do không tương thích frontend. Nếu browser hỗ trợ ghi âm mp3 thì dùng luôn, còn không chỉ hỗ trợ tải webm.
-  const convertToMp3 = (webmBlob) => {
-    if (webmBlob.type === 'audio/mp3' || webmBlob.type === 'audio/mpeg') {
-      setMp3Url(URL.createObjectURL(webmBlob));
-    } else {
-      setMp3Url(null); // Không hỗ trợ convert trên frontend, chỉ cho tải webm
-    }
-  };
 
   return (
     <div className="mocktest-tab-container">
@@ -184,6 +250,8 @@ function MockTestTab() {
         {audioUrl && (
           <div style={{ marginTop: 16 }}>
             <audio controls src={audioUrl} />
+            {isConverting && <div style={{ color: '#1976d2', marginTop: 8 }}>Đang chuyển đổi sang mp3...</div>}
+            {cloudConvertError && <div style={{ color: 'red', marginTop: 8 }}>{cloudConvertError}</div>}
             <div style={{ marginTop: 8, display: 'flex', gap: 12, justifyContent: 'center' }}>
               <Button onClick={() => { setAudioUrl(null); setMp3Url(null); }} variant="secondary">Xóa ghi âm</Button>
               <Button
@@ -200,25 +268,15 @@ function MockTestTab() {
               >Thi lại</Button>
               <Button
                 onClick={async () => {
-                  if (!audioUrl && !mp3Url) {
-                    alert('Không có file ghi âm để chia sẻ!');
+                  if (!mp3Url) {
+                    alert('Đang chuyển đổi sang mp3 hoặc chưa có file mp3!');
                     return;
                   }
                   try {
-                    let file = null;
-                    let fileUrl = null;
-                    if (mp3Url) {
-                      // Prefer sharing mp3 if available
-                      const response = await fetch(mp3Url);
-                      const blob = await response.blob();
-                      file = new File([blob], 'opic_recording.mp3', { type: 'audio/mp3' });
-                      fileUrl = mp3Url;
-                    } else {
-                      const response = await fetch(audioUrl);
-                      const blob = await response.blob();
-                      file = new File([blob], 'opic_recording.webm', { type: blob.type });
-                      fileUrl = audioUrl;
-                    }
+                    // Download mp3 file từ CloudConvert
+                    const response = await fetch(mp3Url);
+                    const blob = await response.blob();
+                    const file = new File([blob], 'opic_recording.mp3', { type: 'audio/mp3' });
                     if (navigator.canShare && navigator.canShare({ files: [file] })) {
                       await navigator.share({
                         title: 'Chia sẻ bài nói OPIC',
@@ -226,15 +284,13 @@ function MockTestTab() {
                         files: [file]
                       });
                     } else if (navigator.share) {
-                      // Fallback: try sharing with just text and no file
                       await navigator.share({
                         title: 'Chia sẻ bài nói OPIC',
-                        text: 'Đây là file ghi âm bài nói OPIC của mình. Nhờ bạn đánh giá giúp nhé! Link file: ' + fileUrl
+                        text: 'Đây là file ghi âm bài nói OPIC của mình. Nhờ bạn đánh giá giúp nhé! Link file: ' + mp3Url
                       });
                     } else {
-                      // Fallback: copy link
-                      await navigator.clipboard.writeText(fileUrl);
-                      alert('Đã copy link file ghi âm. Dán vào Zalo, Messenger, ChatGPT... để chia sẻ!');
+                      await navigator.clipboard.writeText(mp3Url);
+                      alert('Đã copy link file mp3. Dán vào Zalo, Messenger, ChatGPT... để chia sẻ!');
                     }
                   } catch (err) {
                     alert('Không thể chia sẻ: ' + err.message);
