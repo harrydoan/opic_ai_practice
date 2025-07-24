@@ -26,9 +26,9 @@ const cleanOpicResponse = (rawText) => {
 
 const InputTab = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedLevel, setSelectedLevel] = useState('AL');
   // Thêm model mới và đặt mặc định
-  const [selectedModel, setSelectedModel] = useState('google/gemini-2.5-pro-exp-03-25');
+  const [selectedModel, setSelectedModel] = useState('google/gemma-3-27b-it:free');
+  const [selectedLevel, setSelectedLevel] = useState('AL');
   const { setSentenceData, setActiveTab, opicText, setOpicText, setSelectedModel: setGlobalModel } = useContext(AppContext);
 
   // Lưu và tải lại dữ liệu luyện tập từ localStorage với tên file
@@ -171,6 +171,15 @@ const InputTab = () => {
       )}
       <div className="level-selector" style={{ display: 'flex', gap: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
         <div>
+          <label htmlFor="model-select">Chọn Model:</label>
+          <select id="model-select" value={selectedModel} onChange={e => setSelectedModel(e.target.value)}>
+            <option value="google/gemma-3-27b-it:free">Gemma 3 27B IT (Google, free)</option>
+            <option value="qwen/qwen3-235b-a22b-07-25:free">Qwen3-235B (Qwen, free)</option>
+            <option value="openai/gpt-4.1-nano">GPT-4.1-nano (OpenAI, trả phí)</option>
+            <option value="deepseek/deepseek-r1-0528:free">DeepSeek R1 (free)</option>
+          </select>
+        </div>
+        <div>
           <label htmlFor="level-select">Chọn Level:</label>
           <select id="level-select" value={selectedLevel} onChange={e => setSelectedLevel(e.target.value)}>
             <option value="IM">IM (Intermediate Mid)</option>
@@ -178,16 +187,12 @@ const InputTab = () => {
             <option value="AL">AL (Advanced Low)</option>
           </select>
         </div>
-        <div>
-          <label htmlFor="model-select">Chọn Model:</label>
-          <select id="model-select" value={selectedModel} onChange={e => setSelectedModel(e.target.value)}>
-            <option value="google/gemini-2.5-pro-exp-03-25">Gemini 2.5 Pro (Google)</option>
-            <option value="google/gemma-3-27b-it:free">Gemma 3 27B IT (Google, free)</option>
-            <option value="openai/gpt-4.1-nano">GPT-4.1-nano (OpenAI)</option>
-            <option value="deepseek/deepseek-r1-0528:free">DeepSeek R1 (free)</option>
-          </select>
-        </div>
       </div>
+      {selectedModel === 'openai/gpt-4.1-nano' && (
+        <div style={{ color: 'red', textAlign: 'center', marginBottom: 8, fontWeight: 600 }}>
+          ⚠️ Model này có thể mất phí khi sử dụng. Vui lòng kiểm tra tài khoản trước khi chọn!
+        </div>
+      )}
       <div className="button-group" style={{ display: 'flex', gap: 16, marginBottom: 16, justifyContent: 'center', alignItems: 'center' }}>
         <Button onClick={handleFetchData} disabled={isLoading} style={{ minWidth: 160, fontSize: 16, borderRadius: 10 }}>
           {isLoading ? 'Đang lấy câu hỏi...' : 'Lấy câu hỏi OPIC'}
