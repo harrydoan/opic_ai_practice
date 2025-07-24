@@ -204,24 +204,30 @@ function MockTestTab() {
                     alert('Không có file ghi âm để chia sẻ!');
                     return;
                   }
-                  if (navigator.share) {
-                    try {
+                  try {
+                    // Fetch the blob from the object URL
+                    const response = await fetch(audioUrl);
+                    const blob = await response.blob();
+                    const file = new File([blob], 'opic_recording.webm', { type: blob.type });
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
                       await navigator.share({
                         title: 'Chia sẻ bài nói OPIC',
                         text: 'Đây là file ghi âm bài nói OPIC của mình. Nhờ bạn đánh giá giúp nhé!',
-                        url: audioUrl
+                        files: [file]
                       });
-                    } catch (err) {
-                      alert('Không thể chia sẻ: ' + err.message);
-                    }
-                  } else {
-                    // Fallback: copy link
-                    try {
+                    } else if (navigator.share) {
+                      // Fallback: try sharing with just text and no file
+                      await navigator.share({
+                        title: 'Chia sẻ bài nói OPIC',
+                        text: 'Đây là file ghi âm bài nói OPIC của mình. Nhờ bạn đánh giá giúp nhé! Link file: ' + audioUrl
+                      });
+                    } else {
+                      // Fallback: copy link
                       await navigator.clipboard.writeText(audioUrl);
                       alert('Đã copy link file ghi âm. Dán vào Zalo, Messenger, ChatGPT... để chia sẻ!');
-                    } catch {
-                      alert('Trình duyệt không hỗ trợ chia sẻ hoặc copy link.');
                     }
+                  } catch (err) {
+                    alert('Không thể chia sẻ: ' + err.message);
                   }
                 }}
                 variant="primary"
