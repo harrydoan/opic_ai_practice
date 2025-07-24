@@ -30,8 +30,6 @@ function MockTestTab() {
       reader.readAsDataURL(blob);
     });
   };
-
-  // Convert webm to mp3 using Netlify function (API key is secured on backend)
   const convertToMp3 = async (webmBlob) => {
     setIsConverting(true);
     setCloudConvertError('');
@@ -69,9 +67,10 @@ function MockTestTab() {
       setCloudConvertError('Lỗi convert mp3: ' + err.message);
     }
     setIsConverting(false);
-  };
-  const [timer, setTimer] = useState(60);
-  const [isFinished, setIsFinished] = useState(false);
+
+}
+
+export default MockTestTab;
   const [questionPlayed, setQuestionPlayed] = useState(false);
   const [canReplay, setCanReplay] = useState(true);
   const [questionWait, setQuestionWait] = useState(false);
@@ -337,6 +336,5 @@ function MockTestTab() {
   );
 }
 
-export default MockTestTab;
 
-// ...existing code...
+export default MockTestTab;
