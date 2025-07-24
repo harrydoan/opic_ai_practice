@@ -45,8 +45,25 @@ function MockTestTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ webmBase64: base64 })
       });
-      const data = await res.json();
-      if (!res.ok || !data.mp3Url) throw new Error(data.body || data.error || 'Không lấy được link mp3');
+      let errorDetails = '';
+      let statusCode = res.status;
+      let statusText = res.statusText;
+      let data = null;
+      try {
+        data = await res.json();
+      } catch (e) {
+        errorDetails = 'Không thể parse JSON từ phản hồi backend.';
+      }
+      if (!res.ok || !data || !data.mp3Url) {
+        let backendMsg = (data && (data.body || data.error)) ? (data.body || data.error) : '';
+        setCloudConvertError(
+          `Lỗi convert mp3: Không lấy được link mp3.\n` +
+          `Status: ${statusCode} ${statusText}\n` +
+          (backendMsg ? `Backend: ${backendMsg}\n` : '') +
+          (errorDetails ? `Parse error: ${errorDetails}\n` : '')
+        );
+        return;
+      }
       setMp3Url(data.mp3Url);
     } catch (err) {
       setCloudConvertError('Lỗi convert mp3: ' + err.message);
