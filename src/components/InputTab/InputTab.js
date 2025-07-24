@@ -29,7 +29,7 @@ const InputTab = () => {
   const [selectedLevel, setSelectedLevel] = useState('AL');
   // Thêm model mới và đặt mặc định
   const [selectedModel, setSelectedModel] = useState('google/gemini-2.5-pro-exp-03-25');
-  const { setSentenceData, setActiveTab, opicText, setOpicText, selectedModel: globalModel, setSelectedModel: setGlobalModel } = useContext(AppContext);
+  const { setSentenceData, setActiveTab, opicText, setOpicText, setSelectedModel: setGlobalModel } = useContext(AppContext);
 
   // Lưu và tải lại dữ liệu luyện tập từ localStorage với tên file
   const [showLoadDialog, setShowLoadDialog] = useState(false);
@@ -79,7 +79,7 @@ const InputTab = () => {
   // Khi chọn model, cập nhật vào context để các tab khác dùng chung
   React.useEffect(() => {
     if (setGlobalModel) setGlobalModel(selectedModel);
-  }, [selectedModel]);
+  }, [selectedModel, setGlobalModel]);
 
   const handleFetchData = async () => {
     setIsLoading(true);

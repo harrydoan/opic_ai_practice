@@ -73,7 +73,7 @@ const PracticeTab = () => {
     }
     // Loại trùng và cắt còn đủ số lượng
     return Array.from(new Set(distractors)).slice(0, 6 - words.length);
-  }, []);
+  }, [selectedModel]);
 
   // Hàm tạo câu hỏi luyện tập
   const fetchQuestion = useCallback(async () => {
@@ -144,7 +144,7 @@ const PracticeTab = () => {
       translation
     });
     setIsLoading(false);
-  }, [deck, currentIndex, sentenceData, numBlanks, fetchDistractors]);
+  }, [deck, currentIndex, sentenceData, numBlanks, fetchDistractors, selectedModel]);
 
   useEffect(() => {
     if (sentenceData.length > 0 && deck.length > 0 && (typeof currentIndex === 'number')) {

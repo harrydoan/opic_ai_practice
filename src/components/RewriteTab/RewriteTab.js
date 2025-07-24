@@ -12,7 +12,7 @@ export default RewriteTab;
 
 
 function RewriteTab() {
-  const { sentenceData, setActiveTab, selectedModel } = useContext(AppContext);
+  const { sentenceData, setActiveTab } = useContext(AppContext);
   const [currentIdx, setCurrentIdx] = useState(null);
   const [userInput, setUserInput] = useState('');
   const [result, setResult] = useState(null);
