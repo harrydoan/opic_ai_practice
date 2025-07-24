@@ -238,14 +238,14 @@ function MockTestTab() {
                     try {
                       await convertToMp3(window._lastWebmBlob);
                     } catch (err) {
-                      setCloudConvertError('Lỗi convert: ' + (err.message || err));
+                      setCloudConvertError('Lỗi convert mp3: ' + (err.message || err));
                     }
                     setIsConverting(false);
                   }}
                   variant="primary"
                   style={{ fontSize: 18, padding: '10px 24px', borderRadius: 18, marginTop: 8, background: '#1976d2' }}
                   disabled={isConverting}
-                >{isConverting ? 'Đang convert...' : 'Convert sang mp3'}</Button>
+                >{isConverting ? 'Đang chuyển đổi...' : 'Chuyển sang mp3'}</Button>
               )}
               {mp3Url && (
                 <a href={mp3Url} download="opic_recording.mp3" style={{ textDecoration: 'none' }}>
@@ -286,7 +286,13 @@ function MockTestTab() {
               )}
             </div>
             {isConverting && <div style={{ color: '#1976d2', marginTop: 8 }}>Đang chuyển đổi sang mp3...</div>}
-            {cloudConvertError && <div style={{ color: 'red', marginTop: 8, whiteSpace: 'pre-wrap' }}>{cloudConvertError}</div>}
+            {cloudConvertError && (
+              <div style={{ color: 'red', marginTop: 8, whiteSpace: 'pre-wrap', fontWeight: 600 }}>
+                <span>Lỗi chuyển đổi mp3:</span>
+                <br />
+                {cloudConvertError}
+              </div>
+            )}
           </div>
         )}
         {isFinished && <div style={{ color: '#388e3c', marginTop: 8 }}>Đã kết thúc phần thi thử!</div>}

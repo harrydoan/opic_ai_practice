@@ -12,7 +12,7 @@ export default RewriteTab;
 
 
 function RewriteTab() {
-  const { sentenceData, setActiveTab } = useContext(AppContext);
+  const { sentenceData, setActiveTab, selectedModel } = useContext(AppContext);
   const [currentIdx, setCurrentIdx] = useState(null);
   const [userInput, setUserInput] = useState('');
   const [result, setResult] = useState(null);
@@ -26,6 +26,7 @@ function RewriteTab() {
     setUserInput('');
     setResult(null);
     setShowAnswer(false);
+    // selectedModel is available for future AI calls
   };
 
   // Tự động chọn câu khi vào tab hoặc sau khi bấm Câu tiếp theo

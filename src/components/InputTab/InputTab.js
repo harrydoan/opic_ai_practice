@@ -27,7 +27,9 @@ const cleanOpicResponse = (rawText) => {
 const InputTab = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState('AL');
-  const { setSentenceData, setActiveTab, opicText, setOpicText } = useContext(AppContext);
+  // Thêm model mới và đặt mặc định
+  const [selectedModel, setSelectedModel] = useState('google/gemini-2.5-pro-exp-03-25');
+  const { setSentenceData, setActiveTab, opicText, setOpicText, selectedModel: globalModel, setSelectedModel: setGlobalModel } = useContext(AppContext);
 
   // Lưu và tải lại dữ liệu luyện tập từ localStorage với tên file
   const [showLoadDialog, setShowLoadDialog] = useState(false);
@@ -74,6 +76,11 @@ const InputTab = () => {
     setShowLoadDialog(false);
   };
 
+  // Khi chọn model, cập nhật vào context để các tab khác dùng chung
+  React.useEffect(() => {
+    if (setGlobalModel) setGlobalModel(selectedModel);
+  }, [selectedModel]);
+
   const handleFetchData = async () => {
     setIsLoading(true);
     let levelText = '';
@@ -84,7 +91,7 @@ const InputTab = () => {
     if (customPrompt && customPrompt.trim().length > 0) {
       OPIC_PROMPT += `\n\nAdditional instructions: ${customPrompt.trim()}`;
     }
-    const result = await callOpenRouterAPI(OPIC_PROMPT, 'openai/gpt-4.1-nano');
+    const result = await callOpenRouterAPI(OPIC_PROMPT, selectedModel);
     if (result && result.error) {
       let errorMsg = `Lỗi khi kết nối AI: ${result.message}`;
       if (result.status === 404 || (result.message && result.message.toLowerCase().includes('no endpoints'))) {
@@ -162,13 +169,24 @@ const InputTab = () => {
           <Button onClick={() => setShowLoadDialog(false)} variant="secondary" style={{ marginTop: 8 }}>Đóng</Button>
         </div>
       )}
-      <div className="level-selector">
-        <label htmlFor="level-select">Chọn Level:</label>
-        <select id="level-select" value={selectedLevel} onChange={e => setSelectedLevel(e.target.value)}>
-          <option value="IM">IM (Intermediate Mid)</option>
-          <option value="IH">IH (Intermediate High)</option>
-          <option value="AL">AL (Advanced Low)</option>
-        </select>
+      <div className="level-selector" style={{ display: 'flex', gap: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+        <div>
+          <label htmlFor="level-select">Chọn Level:</label>
+          <select id="level-select" value={selectedLevel} onChange={e => setSelectedLevel(e.target.value)}>
+            <option value="IM">IM (Intermediate Mid)</option>
+            <option value="IH">IH (Intermediate High)</option>
+            <option value="AL">AL (Advanced Low)</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="model-select">Chọn Model:</label>
+          <select id="model-select" value={selectedModel} onChange={e => setSelectedModel(e.target.value)}>
+            <option value="google/gemini-2.5-pro-exp-03-25">Gemini 2.5 Pro (Google)</option>
+            <option value="google/gemma-3-27b-it:free">Gemma 3 27B IT (Google, free)</option>
+            <option value="openai/gpt-4.1-nano">GPT-4.1-nano (OpenAI)</option>
+            <option value="deepseek/deepseek-r1-0528:free">DeepSeek R1 (free)</option>
+          </select>
+        </div>
       </div>
       <div className="button-group" style={{ display: 'flex', gap: 16, marginBottom: 16, justifyContent: 'center', alignItems: 'center' }}>
         <Button onClick={handleFetchData} disabled={isLoading} style={{ minWidth: 160, fontSize: 16, borderRadius: 10 }}>

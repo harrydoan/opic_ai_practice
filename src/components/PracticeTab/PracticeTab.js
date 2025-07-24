@@ -27,7 +27,7 @@ function pickRandomWords(sentence, n) {
 const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
 
 const PracticeTab = () => {
-  const { sentenceData, setActiveTab } = useContext(AppContext);
+  const { sentenceData, setActiveTab, selectedModel } = useContext(AppContext);
 
   const [numBlanks, setNumBlanks] = useState(1); // số từ che hiện tại
   const [pendingNumBlanks, setPendingNumBlanks] = useState(1); // số từ che sẽ dùng cho câu tiếp theo
@@ -64,7 +64,7 @@ const PracticeTab = () => {
     for (let i = 0; i < words.length; i++) {
       const prompt = getDistractorPrompt(words[i], sentence);
       try {
-        const res = await callOpenRouterAPI(prompt, 'openai/gpt-4.1-nano', { max_tokens: 200 });
+        const res = await callOpenRouterAPI(prompt, selectedModel, { max_tokens: 200 });
         const arr = JSON.parse(res.match(/\[.*\]/s)[0]);
         distractors = distractors.concat(arr.filter(w => !words.includes(w)));
       } catch (e) {
@@ -130,7 +130,7 @@ const PracticeTab = () => {
     let translation = '';
     try {
       const explainPrompt = `Hãy chọn và giải thích một cấu trúc ngữ pháp bất kỳ (có thể là từ, cụm từ, thì, mệnh đề, liên từ, đảo ngữ, câu điều kiện, v.v.) xuất hiện trong câu sau: "${sentenceObject.originalText}". Giải thích rõ vai trò, ý nghĩa, cách dùng cấu trúc đó trong câu, bằng tiếng Việt. Sau đó dịch toàn bộ câu sang tiếng Việt. Trả về một object JSON với 2 trường: grammar_explanation, translation.`;
-      const res = await callOpenRouterAPI(explainPrompt, 'openai/gpt-4.1-nano', { max_tokens: 300 });
+      const res = await callOpenRouterAPI(explainPrompt, selectedModel, { max_tokens: 300 });
       const obj = JSON.parse(res.match(/{[\s\S]*}/)[0]);
       grammar_explanation = obj.grammar_explanation || '';
       translation = obj.translation || '';
@@ -166,7 +166,7 @@ const PracticeTab = () => {
       if (!grammar_explanation || !translation) {
         try {
           const explainPrompt = `Hãy chọn và giải thích một cấu trúc ngữ pháp bất kỳ (có thể là từ, cụm từ, thì, mệnh đề, liên từ, đảo ngữ, câu điều kiện, v.v.) xuất hiện trong câu sau: "${currentQuestion.question_sentence.replace(/____/g, currentQuestion.correct_answers[0])}". Giải thích rõ vai trò, ý nghĩa, cách dùng cấu trúc đó trong câu, bằng tiếng Việt. Sau đó dịch toàn bộ câu sang tiếng Việt. Trả về một object JSON với 2 trường: grammar_explanation, translation.`;
-          const res = await callOpenRouterAPI(explainPrompt, 'openai/gpt-4.1-nano', { max_tokens: 300 });
+          const res = await callOpenRouterAPI(explainPrompt, selectedModel, { max_tokens: 300 });
           let obj = {};
           try {
             // Robustly extract JSON object from response

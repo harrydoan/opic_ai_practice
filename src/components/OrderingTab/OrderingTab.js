@@ -7,9 +7,10 @@ import './OrderingTab.css';
 const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
 
 const OrderingTab = () => {
-    const { sentenceData, setActiveTab } = useContext(AppContext);
+    const { sentenceData, setActiveTab, selectedModel } = useContext(AppContext);
 
     // Bộ bài chỉ số câu, lặp lại vô hạn
+    // selectedModel is available for future AI calls
     const [deck, setDeck] = useState([]);
     const [currentIndex, setCurrentIndex] = useState(0);
 

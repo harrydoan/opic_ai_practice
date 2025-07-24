@@ -6,6 +6,8 @@ export const AppProvider = ({ children }) => {
   const [activeTab, setActiveTab] = useState('Nhập liệu');
   const [sentenceData, setSentenceData] = useState([]);
   const [opicText, setOpicText] = useState('');
+  // Model AI dùng chung toàn app
+  const [selectedModel, setSelectedModel] = useState('google/gemini-2.5-pro-exp-03-25');
   // STATE MỚI: Lưu lại thứ tự đúng do người dùng sắp xếp
   const [userDefinedOrder, setUserDefinedOrder] = useState(null);
 
@@ -13,7 +15,8 @@ export const AppProvider = ({ children }) => {
     activeTab, setActiveTab,
     sentenceData, setSentenceData,
     opicText, setOpicText,
-    userDefinedOrder, setUserDefinedOrder // <-- Thêm vào context
+    userDefinedOrder, setUserDefinedOrder,
+    selectedModel, setSelectedModel
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
