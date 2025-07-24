@@ -200,15 +200,25 @@ function MockTestTab() {
               >Thi lại</Button>
               <Button
                 onClick={async () => {
-                  if (!audioUrl) {
+                  if (!audioUrl && !mp3Url) {
                     alert('Không có file ghi âm để chia sẻ!');
                     return;
                   }
                   try {
-                    // Fetch the blob from the object URL
-                    const response = await fetch(audioUrl);
-                    const blob = await response.blob();
-                    const file = new File([blob], 'opic_recording.webm', { type: blob.type });
+                    let file = null;
+                    let fileUrl = null;
+                    if (mp3Url) {
+                      // Prefer sharing mp3 if available
+                      const response = await fetch(mp3Url);
+                      const blob = await response.blob();
+                      file = new File([blob], 'opic_recording.mp3', { type: 'audio/mp3' });
+                      fileUrl = mp3Url;
+                    } else {
+                      const response = await fetch(audioUrl);
+                      const blob = await response.blob();
+                      file = new File([blob], 'opic_recording.webm', { type: blob.type });
+                      fileUrl = audioUrl;
+                    }
                     if (navigator.canShare && navigator.canShare({ files: [file] })) {
                       await navigator.share({
                         title: 'Chia sẻ bài nói OPIC',
@@ -219,11 +229,11 @@ function MockTestTab() {
                       // Fallback: try sharing with just text and no file
                       await navigator.share({
                         title: 'Chia sẻ bài nói OPIC',
-                        text: 'Đây là file ghi âm bài nói OPIC của mình. Nhờ bạn đánh giá giúp nhé! Link file: ' + audioUrl
+                        text: 'Đây là file ghi âm bài nói OPIC của mình. Nhờ bạn đánh giá giúp nhé! Link file: ' + fileUrl
                       });
                     } else {
                       // Fallback: copy link
-                      await navigator.clipboard.writeText(audioUrl);
+                      await navigator.clipboard.writeText(fileUrl);
                       alert('Đã copy link file ghi âm. Dán vào Zalo, Messenger, ChatGPT... để chia sẻ!');
                     }
                   } catch (err) {
