@@ -339,6 +339,4 @@ function MockTestTab() {
 
 export default MockTestTab;
 
-// Giải thích level OPIC
-
-// Giải thích level OPIC
+// ...existing code...
