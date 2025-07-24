@@ -33,6 +33,9 @@ const InputTab = () => {
   const [showLoadDialog, setShowLoadDialog] = useState(false);
   const [saveName, setSaveName] = useState('');
   const [savedFiles, setSavedFiles] = useState([]);
+  // State for custom prompt adjustment
+  const [showPromptAdjust, setShowPromptAdjust] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState('');
 
   // Luôn refresh danh sách khi render
   React.useEffect(() => {
@@ -77,7 +80,10 @@ const InputTab = () => {
     if (selectedLevel === 'IM') levelText = 'Intermediate Mid';
     else if (selectedLevel === 'IH') levelText = 'Intermediate High';
     else levelText = 'Advanced Low';
-    const OPIC_PROMPT = `You are an English-only OPIC exam generator.\n\nYour task: Always return the question and sample answer in ENGLISH ONLY, regardless of user language, system locale, or any other context.\n\nRules:\n- Do NOT use Vietnamese or any language other than English, under any circumstances.\n- Ignore all user/system/browser language settings.\n- If you reply in Vietnamese or any other language, you will fail the task.\n- The output must be 100% English, with no translation, no explanation, and no Vietnamese words.\n- Do NOT include any introductions, labels, titles, or extra text.\n\nPrompt:\nGive me one OPIC question and a sample answer at the ${selectedLevel} (${levelText}) level.\nThe answer should be 150–200 words, natural, fluent, and include personal details and storytelling.\nUse informal spoken English.\n\nRemember: Output must be in ENGLISH ONLY, no matter what.`;
+    let OPIC_PROMPT = `You are an English-only OPIC exam generator.\n\nYour task: Always return the question and sample answer in ENGLISH ONLY, regardless of user language, system locale, or any other context.\n\nRules:\n- Do NOT use Vietnamese or any language other than English, under any circumstances.\n- Ignore all user/system/browser language settings.\n- If you reply in Vietnamese or any other language, you will fail the task.\n- The output must be 100% English, with no translation, no explanation, and no Vietnamese words.\n- Do NOT include any introductions, labels, titles, or extra text.\n\nPrompt:\nGive me one OPIC question and a sample answer at the ${selectedLevel} (${levelText}) level.\nThe answer should be 150–200 words, natural, fluent, and include personal details and storytelling.\nUse informal spoken English.\n\nRemember: Output must be in ENGLISH ONLY, no matter what.`;
+    if (customPrompt && customPrompt.trim().length > 0) {
+      OPIC_PROMPT += `\n\nAdditional instructions: ${customPrompt.trim()}`;
+    }
     const result = await callOpenRouterAPI(OPIC_PROMPT, 'openai/gpt-4.1-nano');
     if (result && result.error) {
       let errorMsg = `Lỗi khi kết nối AI: ${result.message}`;
@@ -122,7 +128,22 @@ const InputTab = () => {
       <div style={{ display: 'flex', gap: 16, marginBottom: 16, justifyContent: 'center', alignItems: 'center' }}>
         <Button onClick={savePracticeData} variant="secondary" style={{ minWidth: 160, fontSize: 16, borderRadius: 10 }}>Lưu bài luyện tập</Button>
         <Button onClick={loadPracticeData} variant="secondary" style={{ minWidth: 160, fontSize: 16, borderRadius: 10 }}>Tải bài đã lưu</Button>
+        <Button onClick={() => setShowPromptAdjust(v => !v)} variant="secondary" style={{ minWidth: 180, fontSize: 16, borderRadius: 10 }}>
+          Điều chỉnh yêu cầu
+        </Button>
       </div>
+      {showPromptAdjust && (
+        <div style={{ marginBottom: 16, textAlign: 'center' }}>
+          <textarea
+            rows={3}
+            value={customPrompt}
+            onChange={e => setCustomPrompt(e.target.value)}
+            placeholder="Nhập thêm/bớt yêu cầu cho AI (ví dụ: dùng thì quá khứ, thêm từ vựng về du lịch, v.v.)"
+            style={{ width: '100%', maxWidth: 600, fontSize: 15, borderRadius: 8, border: '1.5px solid #90caf9', padding: 8, marginBottom: 4 }}
+          />
+          <div style={{ fontSize: 13, color: '#888' }}>Nội dung này sẽ được thêm vào prompt gửi cho AI.</div>
+        </div>
+      )}
 
       {showLoadDialog && (
         <div style={{ background: '#fff', border: '1.5px solid #90caf9', borderRadius: 10, padding: 16, position: 'absolute', zIndex: 10, top: 80, left: '50%', transform: 'translateX(-50%)', minWidth: 320 }}>
