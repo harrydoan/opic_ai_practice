@@ -104,7 +104,8 @@ function MockTestTab() {
       mediaRecorderRef.current.onstop = () => {
         const blob = new Blob(chunks, { type: 'audio/webm' });
         setAudioUrl(URL.createObjectURL(blob));
-        convertToMp3(blob); // Gọi CloudConvert để convert sang mp3
+        // Không tự động convert, chỉ lưu blob để user bấm convert
+        window._lastWebmBlob = blob; // Lưu tạm để convert khi bấm nút
       };
       mediaRecorderRef.current.start();
       setIsRecording(true);
@@ -211,9 +212,7 @@ function MockTestTab() {
         {audioUrl && (
           <div style={{ marginTop: 16 }}>
             <audio controls src={audioUrl} />
-            {isConverting && <div style={{ color: '#1976d2', marginTop: 8 }}>Đang chuyển đổi sang mp3...</div>}
-            {cloudConvertError && <div style={{ color: 'red', marginTop: 8 }}>{cloudConvertError}</div>}
-            <div style={{ marginTop: 8, display: 'flex', gap: 12, justifyContent: 'center' }}>
+            <div style={{ marginTop: 8, display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               <Button onClick={() => { setAudioUrl(null); setMp3Url(null); }} variant="secondary">Xóa ghi âm</Button>
               <Button
                 onClick={() => {
@@ -227,39 +226,27 @@ function MockTestTab() {
                 }}
                 variant="secondary"
               >Thi lại</Button>
-              <Button
-                onClick={async () => {
-                  if (!mp3Url) {
-                    alert('Đang chuyển đổi sang mp3 hoặc chưa có file mp3!');
-                    return;
-                  }
-                  try {
-                    // Download mp3 file từ CloudConvert
-                    const response = await fetch(mp3Url);
-                    const blob = await response.blob();
-                    const file = new File([blob], 'opic_recording.mp3', { type: 'audio/mp3' });
-                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                      await navigator.share({
-                        title: 'Chia sẻ bài nói OPIC',
-                        text: 'Đây là file ghi âm bài nói OPIC của mình. Nhờ bạn đánh giá giúp nhé!',
-                        files: [file]
-                      });
-                    } else if (navigator.share) {
-                      await navigator.share({
-                        title: 'Chia sẻ bài nói OPIC',
-                        text: 'Đây là file ghi âm bài nói OPIC của mình. Nhờ bạn đánh giá giúp nhé! Link file: ' + mp3Url
-                      });
-                    } else {
-                      await navigator.clipboard.writeText(mp3Url);
-                      alert('Đã copy link file mp3. Dán vào Zalo, Messenger, ChatGPT... để chia sẻ!');
+              {!mp3Url && (
+                <Button
+                  onClick={async () => {
+                    if (!window._lastWebmBlob) {
+                      setCloudConvertError('Không tìm thấy file ghi âm để convert!');
+                      return;
                     }
-                  } catch (err) {
-                    alert('Không thể chia sẻ: ' + err.message);
-                  }
-                }}
-                variant="primary"
-                style={{ fontSize: 18, padding: '10px 24px', borderRadius: 18, marginTop: 8 }}
-              >Chia sẻ bài nói</Button>
+                    setCloudConvertError('');
+                    setIsConverting(true);
+                    try {
+                      await convertToMp3(window._lastWebmBlob);
+                    } catch (err) {
+                      setCloudConvertError('Lỗi convert: ' + (err.message || err));
+                    }
+                    setIsConverting(false);
+                  }}
+                  variant="primary"
+                  style={{ fontSize: 18, padding: '10px 24px', borderRadius: 18, marginTop: 8, background: '#1976d2' }}
+                  disabled={isConverting}
+                >{isConverting ? 'Đang convert...' : 'Convert sang mp3'}</Button>
+              )}
               {mp3Url && (
                 <a href={mp3Url} download="opic_recording.mp3" style={{ textDecoration: 'none' }}>
                   <Button variant="primary" style={{ fontSize: 18, padding: '10px 24px', borderRadius: 18, marginTop: 8, background: '#388e3c' }}>
@@ -267,7 +254,39 @@ function MockTestTab() {
                   </Button>
                 </a>
               )}
+              {mp3Url && (
+                <Button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(mp3Url);
+                      const blob = await response.blob();
+                      const file = new File([blob], 'opic_recording.mp3', { type: 'audio/mp3' });
+                      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                          title: 'Chia sẻ bài nói OPIC',
+                          text: 'Đây là file ghi âm bài nói OPIC của mình. Nhờ bạn đánh giá giúp nhé!',
+                          files: [file]
+                        });
+                      } else if (navigator.share) {
+                        await navigator.share({
+                          title: 'Chia sẻ bài nói OPIC',
+                          text: 'Đây là file ghi âm bài nói OPIC của mình. Nhờ bạn đánh giá giúp nhé! Link file: ' + mp3Url
+                        });
+                      } else {
+                        await navigator.clipboard.writeText(mp3Url);
+                        alert('Đã copy link file mp3. Dán vào Zalo, Messenger, ChatGPT... để chia sẻ!');
+                      }
+                    } catch (err) {
+                      alert('Không thể chia sẻ: ' + err.message);
+                    }
+                  }}
+                  variant="primary"
+                  style={{ fontSize: 18, padding: '10px 24px', borderRadius: 18, marginTop: 8, background: '#1976d2' }}
+                >Chia sẻ mp3</Button>
+              )}
             </div>
+            {isConverting && <div style={{ color: '#1976d2', marginTop: 8 }}>Đang chuyển đổi sang mp3...</div>}
+            {cloudConvertError && <div style={{ color: 'red', marginTop: 8, whiteSpace: 'pre-wrap' }}>{cloudConvertError}</div>}
           </div>
         )}
         {isFinished && <div style={{ color: '#388e3c', marginTop: 8 }}>Đã kết thúc phần thi thử!</div>}
