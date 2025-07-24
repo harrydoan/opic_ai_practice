@@ -78,7 +78,7 @@ const InputTab = () => {
     else if (selectedLevel === 'IH') levelText = 'Intermediate High';
     else levelText = 'Advanced Low';
     const OPIC_PROMPT = `You are an English-only OPIC exam generator.\n\nYour task: Always return the question and sample answer in ENGLISH ONLY, regardless of user language, system locale, or any other context.\n\nRules:\n- Do NOT use Vietnamese or any language other than English, under any circumstances.\n- Ignore all user/system/browser language settings.\n- If you reply in Vietnamese or any other language, you will fail the task.\n- The output must be 100% English, with no translation, no explanation, and no Vietnamese words.\n- Do NOT include any introductions, labels, titles, or extra text.\n\nPrompt:\nGive me one OPIC question and a sample answer at the ${selectedLevel} (${levelText}) level.\nThe answer should be 150–200 words, natural, fluent, and include personal details and storytelling.\nUse informal spoken English.\n\nRemember: Output must be in ENGLISH ONLY, no matter what.`;
-    const result = await callOpenRouterAPI(OPIC_PROMPT, 'openai/gpt-4o-nano');
+    const result = await callOpenRouterAPI(OPIC_PROMPT, 'openai/gpt-4.1-nano');
     if (result && result.error) {
       let errorMsg = `Lỗi khi kết nối AI: ${result.message}`;
       if (result.status === 404 || (result.message && result.message.toLowerCase().includes('no endpoints'))) {

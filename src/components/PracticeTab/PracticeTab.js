@@ -64,7 +64,7 @@ const PracticeTab = () => {
     for (let i = 0; i < words.length; i++) {
       const prompt = getDistractorPrompt(words[i], sentence);
       try {
-        const res = await callOpenRouterAPI(prompt, 'openai/gpt-4o-nano', { max_tokens: 200 });
+        const res = await callOpenRouterAPI(prompt, 'openai/gpt-4.1-nano', { max_tokens: 200 });
         const arr = JSON.parse(res.match(/\[.*\]/s)[0]);
         distractors = distractors.concat(arr.filter(w => !words.includes(w)));
       } catch (e) {
@@ -130,7 +130,7 @@ const PracticeTab = () => {
     let translation = '';
     try {
       const explainPrompt = `Hãy giải thích ngữ pháp của từ "${blankWords[0]}" trong câu: "${sentenceObject.originalText}" (bao gồm từ loại, vai trò, vị trí trong câu, giải thích bằng tiếng Việt). Sau đó dịch toàn bộ câu sang tiếng Việt. Trả về một object JSON với 2 trường: grammar_explanation, translation.`;
-      const res = await callOpenRouterAPI(explainPrompt, 'openai/gpt-4o-nano', { max_tokens: 300 });
+      const res = await callOpenRouterAPI(explainPrompt, 'openai/gpt-4.1-nano', { max_tokens: 300 });
       const obj = JSON.parse(res.match(/{[\s\S]*}/)[0]);
       grammar_explanation = obj.grammar_explanation || '';
       translation = obj.translation || '';
@@ -166,7 +166,7 @@ const PracticeTab = () => {
       if (!grammar_explanation || !translation) {
         try {
           const explainPrompt = `Hãy giải thích ngữ pháp của từ "${currentQuestion.correct_answers[0]}" trong câu: "${currentQuestion.question_sentence.replace(/____/g, currentQuestion.correct_answers[0])}" (bao gồm từ loại, vai trò, vị trí trong câu, giải thích bằng tiếng Việt). Sau đó dịch toàn bộ câu sang tiếng Việt. Trả về một object JSON với 2 trường: grammar_explanation, translation.`;
-          const res = await callOpenRouterAPI(explainPrompt, 'openai/gpt-4o-nano', { max_tokens: 300 });
+          const res = await callOpenRouterAPI(explainPrompt, 'openai/gpt-4.1-nano', { max_tokens: 300 });
           let obj = {};
           try {
             // Robustly extract JSON object from response
