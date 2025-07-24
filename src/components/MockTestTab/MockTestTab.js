@@ -201,32 +201,33 @@ function MockTestTab() {
               >Thi lại</Button>
               <Button
                 onClick={async () => {
-                  setTranscript('');
                   if (!audioUrl) {
-                    setTranscript('Không có file ghi âm.');
+                    alert('Không có file ghi âm để chia sẻ!');
                     return;
                   }
-                  try {
-                    const response = await fetch(audioUrl);
-                    let audioBlob = await response.blob();
-                    if (audioBlob.size > 25 * 1024 * 1024) {
-                      setTranscript('File ghi âm quá lớn (>25MB), không thể gửi lên Whisper API.');
-                      return;
-                    }
-                    setTranscript('Đang gửi lên OpenAI Whisper...');
+                  if (navigator.share) {
                     try {
-                      const text = await whisperSpeechToText(audioBlob);
-                      setTranscript(text || 'Không nhận diện được nội dung.');
-                    } catch (apiErr) {
-                      setTranscript('Lỗi API: ' + (apiErr.message || apiErr.code || 'Unknown error'));
+                      await navigator.share({
+                        title: 'Chia sẻ bài nói OPIC',
+                        text: 'Đây là file ghi âm bài nói OPIC của mình. Nhờ bạn đánh giá giúp nhé!',
+                        url: audioUrl
+                      });
+                    } catch (err) {
+                      alert('Không thể chia sẻ: ' + err.message);
                     }
-                  } catch (err) {
-                    setTranscript('Lỗi chuyển đổi: ' + err.message);
+                  } else {
+                    // Fallback: copy link
+                    try {
+                      await navigator.clipboard.writeText(audioUrl);
+                      alert('Đã copy link file ghi âm. Dán vào Zalo, Messenger, ChatGPT... để chia sẻ!');
+                    } catch {
+                      alert('Trình duyệt không hỗ trợ chia sẻ hoặc copy link.');
+                    }
                   }
                 }}
                 variant="primary"
                 style={{ fontSize: 18, padding: '10px 24px', borderRadius: 18, marginTop: 8 }}
-              >Chuyển file ghi âm thành text (Whisper)</Button>
+              >Chia sẻ bài nói</Button>
               {mp3Url && (
                 <a href={mp3Url} download="opic_recording.mp3" style={{ textDecoration: 'none' }}>
                   <Button variant="primary" style={{ fontSize: 18, padding: '10px 24px', borderRadius: 18, marginTop: 8, background: '#388e3c' }}>
@@ -238,21 +239,7 @@ function MockTestTab() {
           </div>
         )}
         {isFinished && <div style={{ color: '#388e3c', marginTop: 8 }}>Đã kết thúc phần thi thử!</div>}
-        {transcript && (
-          <div style={{
-            marginTop: 18,
-            background: '#f5f5f5',
-            borderRadius: 12,
-            padding: 16,
-            maxWidth: 400,
-            boxShadow: '0 1px 6px rgba(0,0,0,0.07)'
-          }}>
-            <div style={{ fontWeight: 700, color: '#1976d2', marginBottom: 6 }}>Kết quả chuyển voice thành text:</div>
-            <div style={{ background: '#fff', borderRadius: 6, padding: 8, marginTop: 4, fontStyle: 'italic', color: '#333', border: '1px solid #90caf9' }}>
-              {transcript}
-            </div>
-          </div>
-        )}
+
       </div>
     </div>
   );
