@@ -11,6 +11,8 @@ import './MockTestTab.css';
 
 
 function MockTestTab() {
+  const [isFinished, setIsFinished] = useState(false);
+  const [timer, setTimer] = useState(60);
   const DURATIONS = [60, 90, 120]; // 1 phút, 1.5 phút, 2 phút
   const DURATION_LABELS = ['1 phút', '1.5 phút', '2 phút'];
   const { sentenceData } = useContext(AppContext);
