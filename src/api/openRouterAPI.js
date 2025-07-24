@@ -1,6 +1,6 @@
 const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 // Lưu ý: Không thể dùng process.env trên frontend trực tiếp như backend Node.js. Hãy truyền API key qua biến môi trường build (ví dụ: Vite, CRA sẽ tự inject REACT_APP_*) hoặc window.ENV nếu cần.
-const MODEL = 'openai/gpt-4o-nano';
+const MODEL = 'openai/gpt-4.1-nano';
 
 export const callOpenRouterAPI = async (prompt, model = MODEL, options = {}) => {
   try {
