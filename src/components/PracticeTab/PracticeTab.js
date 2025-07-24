@@ -129,7 +129,7 @@ const PracticeTab = () => {
     let grammar_explanation = '';
     let translation = '';
     try {
-      const explainPrompt = `Hãy giải thích ngữ pháp của từ "${blankWords[0]}" trong câu: "${sentenceObject.originalText}" (bao gồm từ loại, vai trò, vị trí trong câu, giải thích bằng tiếng Việt). Sau đó dịch toàn bộ câu sang tiếng Việt. Trả về một object JSON với 2 trường: grammar_explanation, translation.`;
+      const explainPrompt = `Hãy chọn và giải thích một cấu trúc ngữ pháp bất kỳ (có thể là từ, cụm từ, thì, mệnh đề, liên từ, đảo ngữ, câu điều kiện, v.v.) xuất hiện trong câu sau: "${sentenceObject.originalText}". Giải thích rõ vai trò, ý nghĩa, cách dùng cấu trúc đó trong câu, bằng tiếng Việt. Sau đó dịch toàn bộ câu sang tiếng Việt. Trả về một object JSON với 2 trường: grammar_explanation, translation.`;
       const res = await callOpenRouterAPI(explainPrompt, 'openai/gpt-4.1-nano', { max_tokens: 300 });
       const obj = JSON.parse(res.match(/{[\s\S]*}/)[0]);
       grammar_explanation = obj.grammar_explanation || '';
@@ -165,7 +165,7 @@ const PracticeTab = () => {
       let translation = currentQuestion.translation;
       if (!grammar_explanation || !translation) {
         try {
-          const explainPrompt = `Hãy giải thích ngữ pháp của từ "${currentQuestion.correct_answers[0]}" trong câu: "${currentQuestion.question_sentence.replace(/____/g, currentQuestion.correct_answers[0])}" (bao gồm từ loại, vai trò, vị trí trong câu, giải thích bằng tiếng Việt). Sau đó dịch toàn bộ câu sang tiếng Việt. Trả về một object JSON với 2 trường: grammar_explanation, translation.`;
+          const explainPrompt = `Hãy chọn và giải thích một cấu trúc ngữ pháp bất kỳ (có thể là từ, cụm từ, thì, mệnh đề, liên từ, đảo ngữ, câu điều kiện, v.v.) xuất hiện trong câu sau: "${currentQuestion.question_sentence.replace(/____/g, currentQuestion.correct_answers[0])}". Giải thích rõ vai trò, ý nghĩa, cách dùng cấu trúc đó trong câu, bằng tiếng Việt. Sau đó dịch toàn bộ câu sang tiếng Việt. Trả về một object JSON với 2 trường: grammar_explanation, translation.`;
           const res = await callOpenRouterAPI(explainPrompt, 'openai/gpt-4.1-nano', { max_tokens: 300 });
           let obj = {};
           try {
