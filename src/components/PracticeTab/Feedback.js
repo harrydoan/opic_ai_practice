@@ -21,9 +21,6 @@ const Feedback = ({ isCorrect, question, isLoading }) => { // <-- Nhận prop is
         <strong>Explanation:</strong> {question.explanation}
       </div>
       <div>
-        <strong>Grammar:</strong> {question.grammar}
-      </div>
-      <div>
         <strong>Translation:</strong> {question.translation}
       </div>
     </div>
