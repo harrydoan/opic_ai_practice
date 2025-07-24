@@ -125,14 +125,12 @@ const PracticeTab = () => {
     // 4. Trộn đáp án đúng và sai
     const options = shuffleArray([...blankWords, ...distractors]).slice(0, 6);
 
-    // 5. Lấy giải thích ngữ pháp và dịch (chỉ cần 1 từ che)
-    let grammar_explanation = '';
+    // 5. Lấy bản dịch tiếng Việt
     let translation = '';
     try {
-      const explainPrompt = `Hãy chọn và giải thích một cấu trúc ngữ pháp bất kỳ (có thể là từ, cụm từ, thì, mệnh đề, liên từ, đảo ngữ, câu điều kiện, v.v.) xuất hiện trong câu sau: "${sentenceObject.originalText}". Giải thích rõ vai trò, ý nghĩa, cách dùng cấu trúc đó trong câu, bằng tiếng Việt. Sau đó dịch toàn bộ câu sang tiếng Việt. Trả về một object JSON với 2 trường: grammar_explanation, translation.`;
-      const res = await callOpenRouterAPI(explainPrompt, selectedModel, { max_tokens: 300 });
+      const explainPrompt = `Hãy dịch câu sau sang tiếng Việt: "${sentenceObject.originalText}". Trả về một object JSON với trường: translation.`;
+      const res = await callOpenRouterAPI(explainPrompt, selectedModel, { max_tokens: 200 });
       const obj = JSON.parse(res.match(/{[\s\S]*}/)[0]);
-      grammar_explanation = obj.grammar_explanation || '';
       translation = obj.translation || '';
     } catch (e) {}
 
@@ -140,7 +138,7 @@ const PracticeTab = () => {
       question_sentence: questionSentence,
       options,
       correct_answers: blankWords,
-      grammar_explanation,
+      grammar_explanation: '',
       translation
     });
     setIsLoading(false);
@@ -158,18 +156,16 @@ const PracticeTab = () => {
       ? selectedAnswers.filter(a => a !== answer)
       : [...selectedAnswers, answer];
     setSelectedAnswers(newSelected);
-    // Nếu đã chọn đủ số đáp án, tự động kiểm tra và lấy giải thích ngữ pháp/dịch nếu chưa có
+    // Nếu đã chọn đủ số đáp án, tự động kiểm tra và lấy bản dịch nếu chưa có
     if (newSelected.length === numBlanks) {
       setFeedbackLoading(true);
-      let grammar_explanation = currentQuestion.grammar_explanation;
       let translation = currentQuestion.translation;
-      if (!grammar_explanation || !translation) {
+      if (!translation) {
         try {
-          const explainPrompt = `Hãy chọn và giải thích một cấu trúc ngữ pháp bất kỳ (có thể là từ, cụm từ, thì, mệnh đề, liên từ, đảo ngữ, câu điều kiện, v.v.) xuất hiện trong câu sau: "${currentQuestion.question_sentence.replace(/____/g, currentQuestion.correct_answers[0])}". Giải thích rõ vai trò, ý nghĩa, cách dùng cấu trúc đó trong câu, bằng tiếng Việt. Sau đó dịch toàn bộ câu sang tiếng Việt. Trả về một object JSON với 2 trường: grammar_explanation, translation.`;
-          const res = await callOpenRouterAPI(explainPrompt, selectedModel, { max_tokens: 300 });
+          const explainPrompt = `Hãy dịch câu sau sang tiếng Việt: "${currentQuestion.question_sentence.replace(/____/g, currentQuestion.correct_answers[0])}". Trả về một object JSON với trường: translation.`;
+          const res = await callOpenRouterAPI(explainPrompt, selectedModel, { max_tokens: 200 });
           let obj = {};
           try {
-            // Robustly extract JSON object from response
             const match = res && typeof res === 'string' ? res.match(/{[\s\S]*}/) : null;
             if (match && match[0]) {
               obj = JSON.parse(match[0]);
@@ -177,17 +173,13 @@ const PracticeTab = () => {
           } catch (err) {
             obj = {};
           }
-          grammar_explanation = typeof obj.grammar_explanation === 'string' ? obj.grammar_explanation : '';
           translation = typeof obj.translation === 'string' ? obj.translation : '';
         } catch (e) {
-          grammar_explanation = '';
           translation = '';
         }
       }
-      // Always set fallback values to prevent undefined
-      grammar_explanation = typeof grammar_explanation === 'string' ? grammar_explanation : '';
       translation = typeof translation === 'string' ? translation : '';
-      setCurrentQuestion(q => ({ ...q, grammar_explanation, translation }));
+      setCurrentQuestion(q => ({ ...q, grammar_explanation: '', translation }));
       setTimeout(() => {
         setIsAnswered(true);
         setFeedbackLoading(false);
