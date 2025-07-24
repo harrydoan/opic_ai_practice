@@ -137,7 +137,15 @@ function MockTestTab() {
       }, 1000);
     } catch (err) {
       setError('Không thể truy cập micro. Vui lòng kiểm tra quyền trình duyệt!');
-    }
+          let errorDetails = '';
+          let statusCode = res.status;
+          let statusText = res.statusText;
+          let data = null;
+          try {
+            data = await res.json();
+          } catch (e) {
+            errorDetails = 'Không thể parse JSON từ phản hồi backend.';
+          }
   };
 
   const stopRecording = () => {
@@ -145,6 +153,16 @@ function MockTestTab() {
       mediaRecorderRef.current.stop();
     }
     setIsRecording(false);
+      if (!res.ok || !data || !data.mp3Url) {
+        let backendMsg = (data && (data.body || data.error)) ? (data.body || data.error) : '';
+        setCloudConvertError(
+          `Lỗi convert mp3: Không lấy được link mp3.\n` +
+          `Status: ${statusCode} ${statusText}\n` +
+          (backendMsg ? `Backend: ${backendMsg}\n` : '') +
+          (errorDetails ? `Parse error: ${errorDetails}\n` : '')
+        );
+        return;
+      }
     setIsFinished(true);
     clearInterval(timerRef.current);
   };
