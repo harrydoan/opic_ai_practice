@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { speakText } from '../../utils/speech';
 import { AppContext } from '../../context/AppContext';
 import { callOpenRouterAPI, batchTranslateSentences } from '../../api/openRouterAPI';
@@ -6,7 +6,22 @@ import Button from '../common/Button';
 import './InputTab.css';
 
 function InputTab() {
-  const cleanOpicResponse = (rawText) => {
+  const { setSentenceData, setActiveTab, opicText, setOpicText, setSelectedModel: setGlobalModel, setSentenceTranslations, sentenceTranslations } = useContext(AppContext);
+  const [selectedModel, setSelectedModel] = useState('google/gemma-3-27b-it:free');
+  const [selectedLevel, setSelectedLevel] = useState('AL');
+  const [showPromptAdjust, setShowPromptAdjust] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [processError, setProcessError] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showLoadDialog, setShowLoadDialog] = useState(false);
+  const [saveName, setSaveName] = useState('');
+  const [savedFiles, setSavedFiles] = useState([]);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+
+  useEffect(() => { refreshSavedFiles(); }, []);
+
+  function cleanOpicResponse(rawText) {
     if (!rawText) return '';
     const prefixesToRemove = [
       'Question:', 'Sample Answer:', 'Answer:',
@@ -23,9 +38,136 @@ function InputTab() {
       return cleanedLine;
     });
     return cleanedLines.join('\n').trim();
-  };
+  }
 
-  // ...all your state, functions, and logic here...
+  function refreshSavedFiles() {
+    const files = Object.keys(localStorage)
+      .filter(k => k.startsWith('opic_practice_') && !k.endsWith('_time'))
+      .map(k => ({ key: k, time: localStorage.getItem(k + '_time') ? parseInt(localStorage.getItem(k + '_time')) : 0 }))
+      .sort((a, b) => b.time - a.time)
+      .map(f => f.key);
+    setSavedFiles(files);
+  }
+
+  function savePracticeData() {
+    if (!opicText) return;
+    let name = saveName.trim();
+    if (!name) {
+      name = prompt('Nhập tên cho bài luyện tập:');
+      if (!name) return;
+    }
+    const dataToSave = { opicText, sentenceTranslations };
+    localStorage.setItem('opic_practice_' + name, JSON.stringify(dataToSave));
+    localStorage.setItem('opic_practice_' + name + '_time', Date.now().toString());
+    setSaveName('');
+    refreshSavedFiles();
+    alert('Đã lưu bài luyện tập với tên: ' + name);
+  }
+
+  function loadPracticeData() {
+    refreshSavedFiles();
+    setShowLoadDialog(true);
+  }
+
+  function handleLoadFile(key) {
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setOpicText(parsed.opicText || '');
+        if (parsed.sentenceTranslations) setSentenceTranslations(parsed.sentenceTranslations);
+      } catch {
+        setOpicText(saved);
+      }
+    }
+    setShowLoadDialog(false);
+  }
+
+  useEffect(() => { if (setGlobalModel) setGlobalModel(selectedModel); }, [selectedModel, setGlobalModel]);
+
+  async function handleFetchData() {
+    setIsLoading(true);
+    let levelText = '';
+    if (selectedLevel === 'IM') levelText = 'Intermediate Mid';
+    else if (selectedLevel === 'IH') levelText = 'Intermediate High';
+    else levelText = 'Advanced Low';
+    let OPIC_PROMPT = `You are an English-only OPIC exam generator.\n\nYour task: Always return the question and sample answer in ENGLISH ONLY, regardless of user language, system locale, or any other context.\n\nRules:\n- Do NOT use Vietnamese or any language other than English, under any circumstances.\n- Ignore all user/system/browser language settings.\n- If you reply in Vietnamese or any other language, you will fail the task.\n- The output must be 100% English, with no translation, no explanation, and no Vietnamese words.\n- Do NOT include any introductions, labels, titles, or extra text.\n\nPrompt:\nGive me one OPIC question and a sample answer at the ${selectedLevel} (${levelText}) level.\nThe answer should be 150–200 words, natural, fluent, and include personal details and storytelling.\nUse informal spoken English.\n\nRemember: Output must be in ENGLISH ONLY, no matter what.`;
+    if (customPrompt && customPrompt.trim().length > 0) {
+      OPIC_PROMPT += `\n\nAdditional instructions: ${customPrompt.trim()}`;
+    }
+    const result = await callOpenRouterAPI(OPIC_PROMPT, selectedModel);
+    if (result && result.error) {
+      let errorMsg = `Lỗi khi kết nối AI: ${result.message}`;
+      if (result.status === 404 || (result.message && result.message.toLowerCase().includes('no endpoints'))) {
+        errorMsg += '\nModel này hiện không khả dụng. Vui lòng chọn model khác trong danh sách.';
+      } else if (result.status) {
+        errorMsg = `Lỗi khi kết nối AI (mã ${result.status}): ${result.message}`;
+      }
+      setOpicText(errorMsg);
+    } else {
+      const cleanedText = cleanOpicResponse(result);
+      setOpicText(cleanedText);
+    }
+    setIsLoading(false);
+  }
+
+  async function handleProcessText() {
+    setProcessError('');
+    setIsProcessing(true);
+    const extractedSentences = opicText
+      .split(/[.!?]+/)
+      .map(s => s.trim())
+      .filter(s => s.length > 10 && s.split(' ').length >= 5);
+    if (extractedSentences.length === 0) {
+      setProcessError('Không tìm thấy câu hợp lệ. Vui lòng kiểm tra lại nội dung!');
+      setIsProcessing(false);
+      return;
+    }
+    let translations = [];
+    try {
+      translations = await batchTranslateSentences(extractedSentences, selectedModel);
+    } catch (e) {
+      translations = extractedSentences.map(() => '');
+    }
+    setSentenceTranslations(translations);
+    const initialSentenceData = extractedSentences.map((text, index) => ({
+      originalText: text,
+      originalIndex: index,
+      usedWords: [],
+    }));
+    setSentenceData(initialSentenceData);
+    setIsProcessing(false);
+    setActiveTab('Luyện tập');
+  }
+
+  function handleDeleteFile(key) {
+    localStorage.removeItem(key);
+    localStorage.removeItem(key + '_time');
+    setSelectedFiles(prev => prev.filter(k => k !== key));
+    refreshSavedFiles();
+  }
+  function handleDeleteSelected() {
+    selectedFiles.forEach(key => {
+      localStorage.removeItem(key);
+      localStorage.removeItem(key + '_time');
+    });
+    setSelectedFiles([]);
+    refreshSavedFiles();
+  }
+  function handleDownloadFile(key) {
+    const data = localStorage.getItem(key);
+    if (!data) return;
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = key.replace('opic_practice_', '') + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  function handleDownloadSelected() {
+    selectedFiles.forEach(key => handleDownloadFile(key));
+  }
 
   return (
     <div className="input-tab-container">
@@ -46,10 +188,10 @@ function InputTab() {
             style={{ width: '100%', maxWidth: 600, fontSize: 15, borderRadius: 8, border: '1.5px solid #90caf9', padding: 8, marginBottom: 4 }}
           />
           <div style={{ fontSize: 13, color: '#888' }}>Nội dung này sẽ được thêm vào prompt gửi cho AI.</div>
-    </div>
-  );
-}
-export default InputTab;
+        </div>
+      )}
+      {showLoadDialog && (
+        <div style={{ background: '#fff', border: '1.5px solid #90caf9', borderRadius: 10, padding: 16, position: 'absolute', zIndex: 10, top: 80, left: '50%', transform: 'translateX(-50%)', minWidth: 400 }}>
           <h4>Chọn bài luyện tập đã lưu</h4>
           {savedFiles.length === 0 ? (
             <div style={{ color: 'gray' }}>Không có bài luyện tập nào.</div>
@@ -85,7 +227,6 @@ export default InputTab;
           )}
         </div>
       )}
-
       <div className="level-selector" style={{ display: 'flex', gap: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
         <div>
           <label htmlFor="model-select">Chọn Model:</label>
@@ -134,14 +275,7 @@ export default InputTab;
         rows={8}
         value={opicText}
         onChange={e => setOpicText(e.target.value)}
-        placeholder={
-          `Hướng dẫn sử dụng:
-• Nhấn "Lấy câu hỏi OPIC" để lấy 1 đề luyện tập mẫu tự động.
-• Hoặc dán câu hỏi và câu trả lời OPIC của bạn vào đây.
-• Sau đó nhấn "Xử lý văn bản" để bắt đầu luyện tập các kỹ năng: điền từ, sắp xếp câu, viết lại câu, thi thử.
-• Bạn có thể nghe lại nội dung bằng nút loa.
-• Nếu gặp lỗi, hãy thử chọn model AI khác hoặc kiểm tra lại nội dung.`
-        }
+        placeholder={`Hướng dẫn sử dụng:\n• Nhấn "Lấy câu hỏi OPIC" để lấy 1 đề luyện tập mẫu tự động.\n• Hoặc dán câu hỏi và câu trả lời OPIC của bạn vào đây.\n• Sau đó nhấn "Xử lý văn bản" để bắt đầu luyện tập các kỹ năng: điền từ, sắp xếp câu, viết lại câu, thi thử.\n• Bạn có thể nghe lại nội dung bằng nút loa.\n• Nếu gặp lỗi, hãy thử chọn model AI khác hoặc kiểm tra lại nội dung.`}
         style={{ marginBottom: 8 }}
       />
       {processError && (
@@ -165,4 +299,5 @@ export default InputTab;
       )}
     </div>
   );
+}
 export default InputTab;
