@@ -5,6 +5,7 @@ export const AppContext = createContext();
 export const AppProvider = ({ children }) => {
   const [activeTab, setActiveTab] = useState('Nhập liệu');
   const [sentenceData, setSentenceData] = useState([]);
+  const [sentenceTranslations, setSentenceTranslations] = useState([]); // [{original, translation}]
   const [opicText, setOpicText] = useState('');
   // Model AI dùng chung toàn app
   const [selectedModel, setSelectedModel] = useState('google/gemini-2.5-pro-exp-03-25');
@@ -14,6 +15,7 @@ export const AppProvider = ({ children }) => {
   const value = {
     activeTab, setActiveTab,
     sentenceData, setSentenceData,
+    sentenceTranslations, setSentenceTranslations,
     opicText, setOpicText,
     userDefinedOrder, setUserDefinedOrder,
     selectedModel, setSelectedModel

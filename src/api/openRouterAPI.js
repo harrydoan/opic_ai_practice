@@ -1,4 +1,17 @@
 const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+
+// Batch translate sentences: returns array of {original, translation}
+export const batchTranslateSentences = async (sentences, model = MODEL, options = {}) => {
+  try {
+    const prompt = `Hãy dịch các câu sau sang tiếng Việt. Trả về một mảng JSON, mỗi phần tử là một object có trường 'original' (câu tiếng Anh) và 'translation' (bản dịch tiếng Việt). Các câu:\n${sentences.map((s, i) => `${i + 1}. ${s}`).join('\n')}`;
+    const res = await callOpenRouterAPI(prompt, model, { max_tokens: 2000, ...options });
+    const arr = JSON.parse(res.match(/\[.*\]/s)[0]);
+    return arr;
+  } catch (error) {
+    console.error("Error in batchTranslateSentences:", error);
+    return [];
+  }
+};
 // Lưu ý: Không thể dùng process.env trên frontend trực tiếp như backend Node.js. Hãy truyền API key qua biến môi trường build (ví dụ: Vite, CRA sẽ tự inject REACT_APP_*) hoặc window.ENV nếu cần.
 const MODEL = 'openai/gpt-4.1-nano';
 

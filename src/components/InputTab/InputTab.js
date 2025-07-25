@@ -1,7 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { speakText } from '../../utils/speech';
 import { AppContext } from '../../context/AppContext';
-import { callOpenRouterAPI } from '../../api/openRouterAPI';
+import { callOpenRouterAPI, batchTranslateSentences } from '../../api/openRouterAPI';
 import Button from '../common/Button';
 import './InputTab.css';
 
@@ -108,7 +108,7 @@ const InputTab = () => {
   };
 
   const [processError, setProcessError] = useState('');
-  const handleProcessText = () => {
+  const handleProcessText = async () => {
     setProcessError('');
     // Không kiểm tra tiếng Việt, chỉ tách câu hợp lệ
     const extractedSentences = opicText
@@ -119,10 +119,18 @@ const InputTab = () => {
       setProcessError('Không tìm thấy câu hợp lệ. Vui lòng kiểm tra lại nội dung!');
       return;
     }
+    // Batch request translations for all sentences
+    let translations = [];
+    try {
+      translations = await batchTranslateSentences(extractedSentences, selectedModel);
+    } catch (e) {
+      translations = extractedSentences.map(() => '');
+    }
     const initialSentenceData = extractedSentences.map((text, index) => ({
       originalText: text,
       originalIndex: index,
-      usedWords: []
+      usedWords: [],
+      translation: translations[index] || ''
     }));
     setSentenceData(initialSentenceData);
     setActiveTab('Luyện tập');

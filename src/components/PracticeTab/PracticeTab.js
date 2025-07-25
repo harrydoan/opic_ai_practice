@@ -27,7 +27,7 @@ function pickRandomWords(sentence, n) {
 const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
 
 const PracticeTab = () => {
-  const { sentenceData, setActiveTab, selectedModel } = useContext(AppContext);
+  const { sentenceData, setActiveTab, selectedModel, sentenceTranslations } = useContext(AppContext);
 
   const [numBlanks, setNumBlanks] = useState(1); // số từ che hiện tại
   const [pendingNumBlanks, setPendingNumBlanks] = useState(1); // số từ che sẽ dùng cho câu tiếp theo
@@ -58,22 +58,28 @@ const PracticeTab = () => {
 
   // Sử dụng useCallback để tránh lỗi missing dependency
 
-  // Hàm lấy đáp án sai cho từng từ bị che
-  const fetchDistractors = useCallback(async (words, sentence) => {
+  // Generate distractors locally: pick words of same type from paragraph
+  const getWordType = (word) => {
+    // Simple type detection: articles, prepositions, verbs, etc.
+    const articles = ['a', 'an', 'the'];
+    const prepositions = ['in', 'on', 'at', 'with', 'from', 'for', 'about', 'over', 'under', 'by'];
+    const verbs = ['is', 'are', 'was', 'were', 'be', 'being', 'been'];
+    if (articles.includes(word.toLowerCase())) return 'article';
+    if (prepositions.includes(word.toLowerCase())) return 'preposition';
+    if (verbs.includes(word.toLowerCase())) return 'verb';
+    return null;
+  };
+  const fetchDistractors = useCallback((words, sentence) => {
+    const allWords = sentence.split(/\s+/).map(w => w.replace(/[.,!?;:]/g, ''));
     let distractors = [];
     for (let i = 0; i < words.length; i++) {
-      const prompt = getDistractorPrompt(words[i], sentence);
-      try {
-        const res = await callOpenRouterAPI(prompt, selectedModel, { max_tokens: 200 });
-        const arr = JSON.parse(res.match(/\[.*\]/s)[0]);
-        distractors = distractors.concat(arr.filter(w => !words.includes(w)));
-      } catch (e) {
-        // Nếu lỗi, bỏ qua từ này
-      }
+      const type = getWordType(words[i]);
+      const candidates = allWords.filter(w => w.length > 2 && w !== words[i] && getWordType(w) === type);
+      distractors = distractors.concat(candidates);
     }
     // Loại trùng và cắt còn đủ số lượng
     return Array.from(new Set(distractors)).slice(0, 6 - words.length);
-  }, [selectedModel]);
+  }, []);
 
   // Hàm tạo câu hỏi luyện tập
   const fetchQuestion = useCallback(async () => {
@@ -125,14 +131,11 @@ const PracticeTab = () => {
     // 4. Trộn đáp án đúng và sai
     const options = shuffleArray([...blankWords, ...distractors]).slice(0, 6);
 
-    // 5. Lấy bản dịch tiếng Việt
+    // 5. Lấy bản dịch tiếng Việt từ sentenceTranslations
     let translation = '';
-    try {
-      const explainPrompt = `Hãy dịch câu sau sang tiếng Việt: "${sentenceObject.originalText}". Trả về một object JSON với trường: translation.`;
-      const res = await callOpenRouterAPI(explainPrompt, selectedModel, { max_tokens: 200 });
-      const obj = JSON.parse(res.match(/{[\s\S]*}/)[0]);
-      translation = obj.translation || '';
-    } catch (e) {}
+    if (sentenceTranslations && sentenceTranslations.length > sentenceIdx) {
+      translation = sentenceTranslations[sentenceIdx]?.translation || '';
+    }
 
     setCurrentQuestion({
       question_sentence: questionSentence,
