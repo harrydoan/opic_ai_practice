@@ -44,13 +44,20 @@ const InputTab = () => {
     refreshSavedFiles();
   }, []);
 
-  // Lấy danh sách file đã lưu
+  // Lấy danh sách file đã lưu, sort theo thời gian (mới nhất lên đầu)
   const refreshSavedFiles = () => {
-    const files = Object.keys(localStorage).filter(k => k.startsWith('opic_practice_'));
+    const files = Object.keys(localStorage)
+      .filter(k => k.startsWith('opic_practice_') && !k.endsWith('_time'))
+      .map(k => ({
+        key: k,
+        time: localStorage.getItem(k + '_time') ? parseInt(localStorage.getItem(k + '_time')) : 0
+      }))
+      .sort((a, b) => b.time - a.time)
+      .map(f => f.key);
     setSavedFiles(files);
   };
 
-  // Lưu dữ liệu với tên
+  // Lưu dữ liệu với tên, bao gồm cả tiếng Anh và bản dịch
   const savePracticeData = () => {
     if (!opicText) return;
     let name = saveName.trim();
@@ -58,7 +65,13 @@ const InputTab = () => {
       name = prompt('Nhập tên cho bài luyện tập:');
       if (!name) return;
     }
-    localStorage.setItem('opic_practice_' + name, opicText);
+    // Lưu cả tiếng Anh và bản dịch (nếu có)
+    const dataToSave = {
+      opicText,
+      sentenceTranslations
+    };
+    localStorage.setItem('opic_practice_' + name, JSON.stringify(dataToSave));
+    localStorage.setItem('opic_practice_' + name + '_time', Date.now().toString());
     setSaveName('');
     refreshSavedFiles();
     alert('Đã lưu bài luyện tập với tên: ' + name);
@@ -72,7 +85,15 @@ const InputTab = () => {
 
   const handleLoadFile = (key) => {
     const saved = localStorage.getItem(key);
-    if (saved) setOpicText(saved);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setOpicText(parsed.opicText || '');
+        if (parsed.sentenceTranslations) setSentenceTranslations(parsed.sentenceTranslations);
+      } catch {
+        setOpicText(saved);
+      }
+    }
     setShowLoadDialog(false);
   };
 
@@ -171,13 +192,15 @@ const InputTab = () => {
           {savedFiles.length === 0 ? (
             <div style={{ color: 'gray' }}>Không có bài luyện tập nào.</div>
           ) : (
-            <ul style={{ listStyle: 'none', padding: 0 }}>
-              {savedFiles.map(key => (
-                <li key={key} style={{ marginBottom: 8 }}>
-                  <Button onClick={() => handleLoadFile(key)} style={{ minWidth: 180 }}>{key.replace('opic_practice_', '')}</Button>
-                </li>
-              ))}
-            </ul>
+            <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+              <ul style={{ listStyle: 'none', padding: 0 }}>
+                {savedFiles.map(key => (
+                  <li key={key} style={{ marginBottom: 8 }}>
+                    <Button onClick={() => handleLoadFile(key)} style={{ minWidth: 180 }}>{key.replace('opic_practice_', '')}</Button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           <Button onClick={() => setShowLoadDialog(false)} variant="secondary" style={{ marginTop: 8 }}>Đóng</Button>
         </div>

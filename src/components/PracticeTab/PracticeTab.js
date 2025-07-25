@@ -115,14 +115,37 @@ const PracticeTab = () => {
     const blankIdxs = picked.map(p => p.idx);
     const wordsArr = sentenceObject.originalText.split(/\s+/);
     let questionSentence = wordsArr.map((w, i) => blankIdxs.includes(i) ? '____' : w).join(' ');
-    // Always ensure only the correct number of blanks are in correct_answers
-    // and only one instance of each correct answer
+    // Ensure only the correct number of blanks are in correct_answers and no duplicates
     const uniqueBlankWords = Array.from(new Set(blankWords)).slice(0, blanks);
     // Get distractors, ensure no overlap with correct answers
     let distractors = fetchDistractors(uniqueBlankWords, sentenceObject.originalText).filter(d => !uniqueBlankWords.includes(d));
-    // Limit distractors so total options = 6 or less
-    distractors = distractors.slice(0, Math.max(0, 6 - uniqueBlankWords.length));
-    const options = shuffleArray([...uniqueBlankWords, ...distractors]);
+    // Remove duplicates from distractors
+    distractors = Array.from(new Set(distractors));
+    // Fill up to 6 options
+    let options = [...uniqueBlankWords];
+    for (let i = 0; options.length < 6 && i < distractors.length; i++) {
+      if (!options.includes(distractors[i])) {
+        options.push(distractors[i]);
+      }
+    }
+    // If still less than 6, fill with generic distractors (from distractorTypes)
+    if (options.length < 6) {
+      const distractorTypes = {
+        article: ['a', 'an', 'the'],
+        preposition: ['in', 'on', 'at', 'with', 'from', 'for', 'about', 'over', 'under', 'by'],
+        verb: ['is', 'are', 'was', 'were', 'be', 'being', 'been'],
+      };
+      for (const type in distractorTypes) {
+        for (const w of distractorTypes[type]) {
+          if (!options.includes(w)) {
+            options.push(w);
+            if (options.length === 6) break;
+          }
+        }
+        if (options.length === 6) break;
+      }
+    }
+    options = shuffleArray(options);
     let translation = '';
     if (sentenceTranslations && sentenceTranslations.length > sentenceIdx) {
       if (typeof sentenceTranslations[sentenceIdx] === 'object' && sentenceTranslations[sentenceIdx] !== null) {
