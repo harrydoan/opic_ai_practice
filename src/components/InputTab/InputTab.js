@@ -108,8 +108,10 @@ const InputTab = () => {
   };
 
   const [processError, setProcessError] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
   const handleProcessText = async () => {
     setProcessError('');
+    setIsProcessing(true);
     // Không kiểm tra tiếng Việt, chỉ tách câu hợp lệ
     const extractedSentences = opicText
       .split(/[.!?]+/)
@@ -117,6 +119,7 @@ const InputTab = () => {
       .filter(s => s.length > 10 && s.split(' ').length >= 5);
     if (extractedSentences.length === 0) {
       setProcessError('Không tìm thấy câu hợp lệ. Vui lòng kiểm tra lại nội dung!');
+      setIsProcessing(false);
       return;
     }
     // Batch request translations for all sentences
@@ -132,9 +135,9 @@ const InputTab = () => {
       originalText: text,
       originalIndex: index,
       usedWords: [],
-      // Remove translation from here, PracticeTab will use context
     }));
     setSentenceData(initialSentenceData);
+    setIsProcessing(false);
     setActiveTab('Luyện tập');
   };
 
@@ -207,8 +210,8 @@ const InputTab = () => {
         <Button onClick={handleFetchData} disabled={isLoading} style={{ minWidth: 160, fontSize: 16, borderRadius: 10 }}>
           {isLoading ? 'Đang lấy câu hỏi...' : 'Lấy câu hỏi OPIC'}
         </Button>
-        <Button onClick={handleProcessText} disabled={!opicText || isLoading} variant="secondary" style={{ minWidth: 160, fontSize: 16, borderRadius: 10 }}>
-          Xử lý văn bản
+        <Button onClick={handleProcessText} disabled={!opicText || isLoading || isProcessing} variant="secondary" style={{ minWidth: 160, fontSize: 16, borderRadius: 10 }}>
+          {isProcessing ? 'Đang xử lý...' : 'Xử lý văn bản'}
         </Button>
         <button
           aria-label="Nghe toàn bộ nội dung"

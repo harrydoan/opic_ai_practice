@@ -39,6 +39,7 @@ const PracticeTab = () => {
   const [error, setError] = useState(null);
   // ...existing code...
 
+  // Only reset deck and question when sentenceData changes (e.g. after processing input)
   useEffect(() => {
     if (sentenceData.length > 0) {
       setDeck(shuffleArray(Array.from(Array(sentenceData.length).keys())));
@@ -46,7 +47,10 @@ const PracticeTab = () => {
       setNumBlanks(1); // mặc định 1 từ
       setPendingNumBlanks(1);
       setIsLoading(false);
+      // Generate the first question
+      generateQuestion(0, 1, shuffleArray(Array.from(Array(sentenceData.length).keys())));
     }
+    // eslint-disable-next-line
   }, [sentenceData]);
 
   const pickRandomIndex = (deckArr) => {
@@ -89,46 +93,32 @@ const PracticeTab = () => {
   }, []);
 
   // Hàm tạo câu hỏi luyện tập
-  const fetchQuestion = useCallback(() => {
+
+  // Generate a question for a given index, blanks, and deck
+  const generateQuestion = (index, blanks, deckArr) => {
     setIsAnswered(false);
     setSelectedAnswers([]);
     setError(null);
-
-    if (!deck.length) {
-      const newDeck = shuffleArray(Array.from(Array(sentenceData.length).keys()));
-      setDeck(newDeck);
-      setCurrentIndex(0);
-      return;
-    }
-
-    const sentenceIdx = typeof currentIndex === 'number' ? deck[currentIndex] : pickRandomIndex(deck);
+    if (!deckArr.length) return;
+    const sentenceIdx = typeof index === 'number' ? deckArr[index] : pickRandomIndex(deckArr);
     const sentenceObject = sentenceData[sentenceIdx];
     if (!sentenceObject) {
       setError("Không tìm thấy câu hỏi.");
       return;
     }
-
-    // 1. Chọn ngẫu nhiên numBlanks từ trong câu
-    const picked = pickRandomWords(sentenceObject.originalText, numBlanks);
-    if (picked.length < numBlanks) {
+    const picked = pickRandomWords(sentenceObject.originalText, blanks);
+    if (picked.length < blanks) {
       setError('Câu quá ngắn hoặc không đủ từ để che.');
       return;
     }
     const blankWords = picked.map(p => p.word);
     const blankIdxs = picked.map(p => p.idx);
-
-    // 2. Tạo câu hỏi với các từ bị che
     const wordsArr = sentenceObject.originalText.split(/\s+/);
     let questionSentence = wordsArr.map((w, i) => blankIdxs.includes(i) ? '____' : w).join(' ');
-
-    // 3. Lấy đáp án sai từ dữ liệu đầu vào, không gọi AI
     let distractors = fetchDistractors(blankWords, sentenceObject.originalText);
-    // 4. Trộn đáp án đúng và sai
     const options = shuffleArray([...blankWords, ...distractors]).slice(0, 6);
-    // 5. Lấy bản dịch tiếng Việt từ sentenceTranslations (array of {original, translation})
     let translation = '';
     if (sentenceTranslations && sentenceTranslations.length > sentenceIdx) {
-      // Support both array of objects and array of strings
       if (typeof sentenceTranslations[sentenceIdx] === 'object' && sentenceTranslations[sentenceIdx] !== null) {
         translation = sentenceTranslations[sentenceIdx].translation || '';
       } else {
@@ -142,13 +132,16 @@ const PracticeTab = () => {
       grammar_explanation: '',
       translation
     });
-  }, [deck, currentIndex, sentenceData, numBlanks, fetchDistractors, sentenceTranslations]);
+  };
 
+
+  // Only generate a new question when user clicks next or when data is loaded
   useEffect(() => {
-    if (sentenceData.length > 0 && deck.length > 0 && (typeof currentIndex === 'number')) {
-      fetchQuestion();
+    if (sentenceData.length > 0 && deck.length > 0 && typeof currentIndex === 'number') {
+      generateQuestion(currentIndex, numBlanks, deck);
     }
-  }, [currentIndex, deck, sentenceData, numBlanks, fetchQuestion]);
+    // eslint-disable-next-line
+  }, [currentIndex, deck, numBlanks]);
 
   const handleAnswerSelect = (answer) => {
     if (isAnswered) return;
@@ -166,13 +159,13 @@ const PracticeTab = () => {
     // Khi sang câu mới, cập nhật số từ che = pendingNumBlanks
     setNumBlanks(pendingNumBlanks);
     if (deck.length <= 1) {
-      setDeck(shuffleArray(Array.from(Array(sentenceData.length).keys())));
+      const newDeck = shuffleArray(Array.from(Array(sentenceData.length).keys()));
+      setDeck(newDeck);
       setCurrentIndex(0);
     } else {
       const newDeck = deck.filter((_, idx) => idx !== currentIndex);
-      const nextIdx = pickRandomIndex(newDeck);
       setDeck(newDeck);
-      setCurrentIndex(newDeck.indexOf(nextIdx));
+      setCurrentIndex(0); // always go to the first in the new deck
     }
   };
 
