@@ -27,7 +27,7 @@ function pickRandomWords(sentence, n) {
 const shuffleArray = (array) => [...array].sort(() => Math.random() - 0.5);
 
 const PracticeTab = () => {
-  const { sentenceData, setActiveTab, selectedModel, sentenceTranslations } = useContext(AppContext);
+  const { sentenceData, setActiveTab, sentenceTranslations } = useContext(AppContext);
 
   const [numBlanks, setNumBlanks] = useState(1); // số từ che hiện tại
   const [pendingNumBlanks, setPendingNumBlanks] = useState(1); // số từ che sẽ dùng cho câu tiếp theo
@@ -47,6 +47,7 @@ const PracticeTab = () => {
       setCurrentIndex(0);
       setNumBlanks(1); // mặc định 1 từ
       setPendingNumBlanks(1);
+      setIsLoading(false);
     }
   }, [sentenceData]);
 
@@ -55,8 +56,6 @@ const PracticeTab = () => {
     const randomIdx = Math.floor(Math.random() * deckArr.length);
     return deckArr[randomIdx];
   };
-
-  // Sử dụng useCallback để tránh lỗi missing dependency
 
   // Generate distractors locally: pick words of same type from paragraph
   const distractorTypes = {
@@ -70,7 +69,7 @@ const PracticeTab = () => {
     }
     return null;
   };
-  const fetchDistractors = useCallback((words, sentence) => {
+  const fetchDistractors = (words, sentence) => {
     const allWords = sentence.split(/\s+/).map(w => w.replace(/[.,!?;:]/g, ''));
     let distractors = [];
     for (let i = 0; i < words.length; i++) {
@@ -89,11 +88,10 @@ const PracticeTab = () => {
       }
     }
     return Array.from(new Set(distractors)).slice(0, 6 - words.length);
-  }, []);
+  };
 
   // Hàm tạo câu hỏi luyện tập
-  const fetchQuestion = useCallback(async () => {
-    setIsLoading(true);
+  const fetchQuestion = useCallback(() => {
     setIsAnswered(false);
     setSelectedAnswers([]);
     setError(null);
@@ -102,7 +100,6 @@ const PracticeTab = () => {
       const newDeck = shuffleArray(Array.from(Array(sentenceData.length).keys()));
       setDeck(newDeck);
       setCurrentIndex(0);
-      setIsLoading(false);
       return;
     }
 
@@ -110,7 +107,6 @@ const PracticeTab = () => {
     const sentenceObject = sentenceData[sentenceIdx];
     if (!sentenceObject) {
       setError("Không tìm thấy câu hỏi.");
-      setIsLoading(false);
       return;
     }
 
@@ -118,7 +114,6 @@ const PracticeTab = () => {
     const picked = pickRandomWords(sentenceObject.originalText, numBlanks);
     if (picked.length < numBlanks) {
       setError('Câu quá ngắn hoặc không đủ từ để che.');
-      setIsLoading(false);
       return;
     }
     const blankWords = picked.map(p => p.word);
@@ -144,8 +139,7 @@ const PracticeTab = () => {
       grammar_explanation: '',
       translation
     });
-    setIsLoading(false);
-  }, [deck, currentIndex, sentenceData, numBlanks, fetchDistractors, selectedModel]);
+  }, [deck, currentIndex, sentenceData, numBlanks, fetchDistractors, sentenceTranslations]);
 
   useEffect(() => {
     if (sentenceData.length > 0 && deck.length > 0 && (typeof currentIndex === 'number')) {
@@ -153,17 +147,16 @@ const PracticeTab = () => {
     }
   }, [currentIndex, deck, sentenceData, numBlanks, fetchQuestion]);
 
-  const handleAnswerSelect = async (answer) => {
+  const handleAnswerSelect = (answer) => {
     if (isAnswered) return;
     let newSelected = selectedAnswers.includes(answer)
       ? selectedAnswers.filter(a => a !== answer)
       : [...selectedAnswers, answer];
     setSelectedAnswers(newSelected);
-    // Nếu đã chọn đủ số đáp án, tự động kiểm tra và lấy bản dịch từ dữ liệu đầu vào
+    // Nếu đã chọn đủ số đáp án, tự động kiểm tra
     if (newSelected.length === numBlanks) {
       setFeedbackLoading(true);
-      let translation = currentQuestion.translation;
-      setCurrentQuestion(q => ({ ...q, grammar_explanation: '', translation }));
+      setCurrentQuestion(q => ({ ...q }));
       setTimeout(() => {
         setIsAnswered(true);
         setFeedbackLoading(false);
@@ -189,7 +182,7 @@ const PracticeTab = () => {
     return (
       <div className="processing-container">
         <div className="spinner"></div>
-        <h4>AI is generating question...</h4>
+        <h4>Đang tạo câu hỏi...</h4>
       </div>
     );
   }
