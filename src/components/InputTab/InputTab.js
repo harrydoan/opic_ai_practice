@@ -12,50 +12,7 @@ const cleanOpicResponse = (rawText) => {
     'Câu hỏi:', 'Câu trả lời mẫu:', 'Câu trả lời:'
   ];
   const cleanedLines = rawText.split('\n').map(line => {
-    let cleanedLine = line.trim();
-    for (const prefix of prefixesToRemove) {
-      if (cleanedLine.toLowerCase().startsWith(prefix.toLowerCase())) {
-        cleanedLine = cleanedLine.substring(prefix.length).trim();
-        break;
-      }
-    }
-    return cleanedLine;
-  });
-  return cleanedLines.join('\n').trim();
-};
-
-const InputTab = () => {
-  const [isLoading, setIsLoading] = useState(false);
-  // Thêm model mới và đặt mặc định
-  const [selectedModel, setSelectedModel] = useState('google/gemma-3-27b-it:free');
-  const [selectedLevel, setSelectedLevel] = useState('AL');
-  const { setSentenceData, setActiveTab, opicText, setOpicText, setSelectedModel: setGlobalModel, setSentenceTranslations, sentenceTranslations } = useContext(AppContext);
-
-  // Lưu và tải lại dữ liệu luyện tập từ localStorage với tên file
-  const [showLoadDialog, setShowLoadDialog] = useState(false);
-  const [saveName, setSaveName] = useState('');
-  const [savedFiles, setSavedFiles] = useState([]);
-  // State for custom prompt adjustment
-  const [showPromptAdjust, setShowPromptAdjust] = useState(false);
-  const [customPrompt, setCustomPrompt] = useState('');
-
-  // Luôn refresh danh sách khi render
-  React.useEffect(() => {
-    refreshSavedFiles();
-  }, []);
-
-  // Lấy danh sách file đã lưu, sort theo thời gian (mới nhất lên đầu)
-  const refreshSavedFiles = () => {
-    const files = Object.keys(localStorage)
-      .filter(k => k.startsWith('opic_practice_') && !k.endsWith('_time'))
-      .map(k => ({
-        key: k,
-        time: localStorage.getItem(k + '_time') ? parseInt(localStorage.getItem(k + '_time')) : 0
-      }))
-      .sort((a, b) => b.time - a.time)
-      .map(f => f.key);
-    setSavedFiles(files);
-  };
+// ...existing code...
 
   // Lưu dữ liệu với tên, bao gồm cả tiếng Anh và bản dịch
   const savePracticeData = () => {
@@ -164,6 +121,45 @@ const InputTab = () => {
 
   // Model AI đã cố định, không cho phép chọn
 
+  // State cho danh sách file đã chọn
+  const [selectedFiles, setSelectedFiles] = React.useState([]);
+
+  // Xoá 1 file
+  const handleDeleteFile = (key) => {
+    localStorage.removeItem(key);
+    localStorage.removeItem(key + '_time');
+    setSelectedFiles(prev => prev.filter(k => k !== key));
+    refreshSavedFiles();
+  };
+
+  // Xoá nhiều file
+  const handleDeleteSelected = () => {
+    selectedFiles.forEach(key => {
+      localStorage.removeItem(key);
+      localStorage.removeItem(key + '_time');
+    });
+    setSelectedFiles([]);
+    refreshSavedFiles();
+  };
+
+  // Tải xuống 1 file
+  const handleDownloadFile = (key) => {
+    const data = localStorage.getItem(key);
+    if (!data) return;
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = key.replace('opic_practice_', '') + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Tải xuống nhiều file
+  const handleDownloadSelected = () => {
+    selectedFiles.forEach(key => handleDownloadFile(key));
+  };
+
   return (
     <div className="input-tab-container">
       <div style={{ display: 'flex', gap: 16, marginBottom: 16, justifyContent: 'center', alignItems: 'center' }}>
@@ -187,24 +183,43 @@ const InputTab = () => {
       )}
 
       {showLoadDialog && (
-        <div style={{ background: '#fff', border: '1.5px solid #90caf9', borderRadius: 10, padding: 16, position: 'absolute', zIndex: 10, top: 80, left: '50%', transform: 'translateX(-50%)', minWidth: 320 }}>
+        <div style={{ background: '#fff', border: '1.5px solid #90caf9', borderRadius: 10, padding: 16, position: 'absolute', zIndex: 10, top: 80, left: '50%', transform: 'translateX(-50%)', minWidth: 400 }}>
           <h4>Chọn bài luyện tập đã lưu</h4>
           {savedFiles.length === 0 ? (
             <div style={{ color: 'gray' }}>Không có bài luyện tập nào.</div>
           ) : (
-            <div style={{ maxHeight: 300, overflowY: 'auto' }}>
-              <ul style={{ listStyle: 'none', padding: 0 }}>
-                {savedFiles.map(key => (
-                  <li key={key} style={{ marginBottom: 8 }}>
-                    <Button onClick={() => handleLoadFile(key)} style={{ minWidth: 180 }}>{key.replace('opic_practice_', '')}</Button>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <form onSubmit={e => e.preventDefault()}>
+              <div style={{ maxHeight: 300, overflowY: 'auto', marginBottom: 12 }}>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {savedFiles.map(key => (
+                    <li key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, borderBottom: '1px solid #e3f2fd', paddingBottom: 4 }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedFiles?.includes(key) || false}
+                        onChange={e => {
+                          if (e.target.checked) setSelectedFiles(prev => [...prev, key]);
+                          else setSelectedFiles(prev => prev.filter(k => k !== key));
+                        }}
+                        style={{ marginRight: 6 }}
+                      />
+                      <span style={{ flex: 1, fontWeight: 500 }}>{key.replace('opic_practice_', '')}</span>
+                      <Button onClick={() => handleLoadFile(key)} style={{ minWidth: 80, fontSize: 13 }}>Tải lên</Button>
+                      <Button onClick={() => handleDownloadFile(key)} style={{ minWidth: 80, fontSize: 13 }} variant="secondary">Tải xuống</Button>
+                      <Button onClick={() => handleDeleteFile(key)} style={{ minWidth: 60, fontSize: 13, background: '#e57373', color: '#fff' }}>Xoá</Button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                <Button onClick={handleDownloadSelected} disabled={selectedFiles.length === 0} variant="secondary">Tải xuống đã chọn</Button>
+                <Button onClick={handleDeleteSelected} disabled={selectedFiles.length === 0} style={{ background: '#e57373', color: '#fff' }}>Xoá đã chọn</Button>
+                <Button onClick={() => setShowLoadDialog(false)} variant="secondary">Đóng</Button>
+              </div>
+            </form>
           )}
-          <Button onClick={() => setShowLoadDialog(false)} variant="secondary" style={{ marginTop: 8 }}>Đóng</Button>
         </div>
       )}
+
       <div className="level-selector" style={{ display: 'flex', gap: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
         <div>
           <label htmlFor="model-select">Chọn Model:</label>
@@ -285,5 +300,4 @@ const InputTab = () => {
     </div>
   );
 };
-
 export default InputTab;
