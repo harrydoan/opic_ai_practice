@@ -212,7 +212,6 @@ function InputTab() {
                       />
                       <span style={{ flex: 1, fontWeight: 500 }}>{key.replace('opic_practice_', '')}</span>
                       <Button onClick={() => handleLoadFile(key)} style={{ minWidth: 80, fontSize: 13 }}>Tải lên</Button>
-                      <Button onClick={() => handleDownloadFile(key)} style={{ minWidth: 80, fontSize: 13 }} variant="secondary">Tải xuống</Button>
                       <Button onClick={() => handleDeleteFile(key)} style={{ minWidth: 60, fontSize: 13, background: '#e57373', color: '#fff' }}>Xoá</Button>
                     </li>
                   ))}
