@@ -115,12 +115,14 @@ const PracticeTab = () => {
     const blankIdxs = picked.map(p => p.idx);
     const wordsArr = sentenceObject.originalText.split(/\s+/);
     let questionSentence = wordsArr.map((w, i) => blankIdxs.includes(i) ? '____' : w).join(' ');
-    let distractors = [];
-    if (blankWords.length < 6) {
-      distractors = fetchDistractors(blankWords, sentenceObject.originalText).slice(0, 6 - blankWords.length);
-    }
-    // Nếu số đáp án đúng >= 6 thì chỉ lấy đáp án đúng
-    const options = shuffleArray([...blankWords, ...distractors]).slice(0, 6);
+    // Always ensure only the correct number of blanks are in correct_answers
+    // and only one instance of each correct answer
+    const uniqueBlankWords = Array.from(new Set(blankWords)).slice(0, blanks);
+    // Get distractors, ensure no overlap with correct answers
+    let distractors = fetchDistractors(uniqueBlankWords, sentenceObject.originalText).filter(d => !uniqueBlankWords.includes(d));
+    // Limit distractors so total options = 6 or less
+    distractors = distractors.slice(0, Math.max(0, 6 - uniqueBlankWords.length));
+    const options = shuffleArray([...uniqueBlankWords, ...distractors]);
     let translation = '';
     if (sentenceTranslations && sentenceTranslations.length > sentenceIdx) {
       if (typeof sentenceTranslations[sentenceIdx] === 'object' && sentenceTranslations[sentenceIdx] !== null) {
@@ -132,7 +134,7 @@ const PracticeTab = () => {
     setCurrentQuestion({
       question_sentence: questionSentence,
       options,
-      correct_answers: blankWords,
+      correct_answers: uniqueBlankWords,
       grammar_explanation: '',
       translation
     });
