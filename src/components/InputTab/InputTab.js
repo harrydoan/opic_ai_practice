@@ -29,7 +29,7 @@ const InputTab = () => {
   // Thêm model mới và đặt mặc định
   const [selectedModel, setSelectedModel] = useState('google/gemma-3-27b-it:free');
   const [selectedLevel, setSelectedLevel] = useState('AL');
-  const { setSentenceData, setActiveTab, opicText, setOpicText, setSelectedModel: setGlobalModel } = useContext(AppContext);
+  const { setSentenceData, setActiveTab, opicText, setOpicText, setSelectedModel: setGlobalModel, setSentenceTranslations } = useContext(AppContext);
 
   // Lưu và tải lại dữ liệu luyện tập từ localStorage với tên file
   const [showLoadDialog, setShowLoadDialog] = useState(false);
@@ -126,11 +126,13 @@ const InputTab = () => {
     } catch (e) {
       translations = extractedSentences.map(() => '');
     }
+    // Save translations to context for use in PracticeTab
+    setSentenceTranslations(translations);
     const initialSentenceData = extractedSentences.map((text, index) => ({
       originalText: text,
       originalIndex: index,
       usedWords: [],
-      translation: translations[index] || ''
+      // Remove translation from here, PracticeTab will use context
     }));
     setSentenceData(initialSentenceData);
     setActiveTab('Luyện tập');

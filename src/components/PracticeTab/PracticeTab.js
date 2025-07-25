@@ -125,10 +125,15 @@ const PracticeTab = () => {
     let distractors = fetchDistractors(blankWords, sentenceObject.originalText);
     // 4. Trộn đáp án đúng và sai
     const options = shuffleArray([...blankWords, ...distractors]).slice(0, 6);
-    // 5. Lấy bản dịch tiếng Việt từ sentenceTranslations
+    // 5. Lấy bản dịch tiếng Việt từ sentenceTranslations (array of {original, translation})
     let translation = '';
     if (sentenceTranslations && sentenceTranslations.length > sentenceIdx) {
-      translation = sentenceTranslations[sentenceIdx]?.translation || '';
+      // Support both array of objects and array of strings
+      if (typeof sentenceTranslations[sentenceIdx] === 'object' && sentenceTranslations[sentenceIdx] !== null) {
+        translation = sentenceTranslations[sentenceIdx].translation || '';
+      } else {
+        translation = sentenceTranslations[sentenceIdx] || '';
+      }
     }
     setCurrentQuestion({
       question_sentence: questionSentence,
