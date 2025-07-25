@@ -56,18 +56,18 @@ const PracticeTab = () => {
   };
 
   // Generate distractors locally: pick words of same type from paragraph
-  const distractorTypes = {
-    article: ['a', 'an', 'the'],
-    preposition: ['in', 'on', 'at', 'with', 'from', 'for', 'about', 'over', 'under', 'by'],
-    verb: ['is', 'are', 'was', 'were', 'be', 'being', 'been'],
-  };
-  const getWordType = (word) => {
-    for (const type in distractorTypes) {
-      if (distractorTypes[type].includes(word.toLowerCase())) return type;
-    }
-    return null;
-  };
   const fetchDistractors = React.useCallback((words, sentence) => {
+    const distractorTypes = {
+      article: ['a', 'an', 'the'],
+      preposition: ['in', 'on', 'at', 'with', 'from', 'for', 'about', 'over', 'under', 'by'],
+      verb: ['is', 'are', 'was', 'were', 'be', 'being', 'been'],
+    };
+    const getWordType = (word) => {
+      for (const type in distractorTypes) {
+        if (distractorTypes[type].includes(word.toLowerCase())) return type;
+      }
+      return null;
+    };
     const allWords = sentence.split(/\s+/).map(w => w.replace(/[.,!?;:]/g, ''));
     let distractors = [];
     for (let i = 0; i < words.length; i++) {
