@@ -35,7 +35,7 @@ const PracticeTab = () => {
   const [currentIndex, setCurrentIndex] = useState(null);
 
   const [currentQuestion, setCurrentQuestion] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswers, setSelectedAnswers] = useState([]);
   const [error, setError] = useState(null);
@@ -155,12 +155,7 @@ const PracticeTab = () => {
     setSelectedAnswers(newSelected);
     // Nếu đã chọn đủ số đáp án, tự động kiểm tra
     if (newSelected.length === numBlanks) {
-      setFeedbackLoading(true);
-      setCurrentQuestion(q => ({ ...q }));
-      setTimeout(() => {
-        setIsAnswered(true);
-        setFeedbackLoading(false);
-      }, 200);
+      setIsAnswered(true);
     }
   };
 
@@ -179,12 +174,8 @@ const PracticeTab = () => {
   };
 
   if (isLoading) {
-    return (
-      <div className="processing-container">
-        <div className="spinner"></div>
-        <h4>Đang tạo câu hỏi...</h4>
-      </div>
-    );
+    // Không hiển thị spinner/loading nữa, chỉ hiển thị trống hoặc chuyển sang câu hỏi luôn
+    return null;
   }
 
   if (error) {
