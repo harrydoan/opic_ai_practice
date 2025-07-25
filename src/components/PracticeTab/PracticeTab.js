@@ -115,7 +115,11 @@ const PracticeTab = () => {
     const blankIdxs = picked.map(p => p.idx);
     const wordsArr = sentenceObject.originalText.split(/\s+/);
     let questionSentence = wordsArr.map((w, i) => blankIdxs.includes(i) ? '____' : w).join(' ');
-    let distractors = fetchDistractors(blankWords, sentenceObject.originalText);
+    let distractors = [];
+    if (blankWords.length < 6) {
+      distractors = fetchDistractors(blankWords, sentenceObject.originalText).slice(0, 6 - blankWords.length);
+    }
+    // Nếu số đáp án đúng >= 6 thì chỉ lấy đáp án đúng
     const options = shuffleArray([...blankWords, ...distractors]).slice(0, 6);
     let translation = '';
     if (sentenceTranslations && sentenceTranslations.length > sentenceIdx) {
