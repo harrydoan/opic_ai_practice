@@ -67,7 +67,7 @@ const PracticeTab = () => {
     }
     return null;
   };
-  const fetchDistractors = (words, sentence) => {
+  const fetchDistractors = React.useCallback((words, sentence) => {
     const allWords = sentence.split(/\s+/).map(w => w.replace(/[.,!?;:]/g, ''));
     let distractors = [];
     for (let i = 0; i < words.length; i++) {
@@ -86,7 +86,7 @@ const PracticeTab = () => {
       }
     }
     return Array.from(new Set(distractors)).slice(0, 6 - words.length);
-  };
+  }, []);
 
   // Hàm tạo câu hỏi luyện tập
   const fetchQuestion = useCallback(() => {
