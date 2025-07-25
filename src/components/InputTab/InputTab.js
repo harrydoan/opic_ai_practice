@@ -168,7 +168,7 @@ const cleanOpicResponse = (rawText) => {
   // Tải xuống nhiều file
   const handleDownloadSelected = () => {
     selectedFiles.forEach(key => handleDownloadFile(key));
-  };
+// ...existing code for all functions...
 
   return (
     <div className="input-tab-container">
@@ -191,7 +191,6 @@ const cleanOpicResponse = (rawText) => {
           <div style={{ fontSize: 13, color: '#888' }}>Nội dung này sẽ được thêm vào prompt gửi cho AI.</div>
         </div>
       )}
-
       {showLoadDialog && (
         <div style={{ background: '#fff', border: '1.5px solid #90caf9', borderRadius: 10, padding: 16, position: 'absolute', zIndex: 10, top: 80, left: '50%', transform: 'translateX(-50%)', minWidth: 400 }}>
           <h4>Chọn bài luyện tập đã lưu</h4>
