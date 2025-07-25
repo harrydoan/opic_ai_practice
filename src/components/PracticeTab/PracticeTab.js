@@ -273,7 +273,7 @@ const PracticeTab = () => {
               grammar: currentQuestion.grammar_explanation,
               translation: currentQuestion.translation,
             }}
-            isLoading={feedbackLoading}
+            // isLoading prop removed; feedbackLoading is unused and undefined
           />
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
             <Button onClick={handleNextQuestion} style={{ minWidth: 160, fontWeight: 600 }}>
