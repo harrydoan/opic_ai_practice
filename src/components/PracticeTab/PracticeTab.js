@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect, useCallback } from 'react';
 import { AppContext } from '../../context/AppContext';
-import { callOpenRouterAPI } from '../../api/openRouterAPI';
+// ...existing code...
 import Feedback from './Feedback';
 import Button from '../common/Button';
 import { speakText } from '../../utils/speech';
@@ -8,9 +8,7 @@ import './PracticeTab.css';
 
 
 
-// Prompt lấy từ loại tương tự (đáp án sai) cho 1 từ
-const getDistractorPrompt = (word, sentence) =>
-  `Tôi cần tạo câu hỏi điền từ tiếng Anh. Hãy trả về 5 từ loại tương tự với từ "${word}" trong câu: "${sentence}" (không trùng với từ đó, không xuất hiện trong câu, không phải tên riêng, không phải từ hiếm, phải là từ phổ biến, cùng từ loại, phù hợp điền vào vị trí đó). Trả về một mảng JSON duy nhất gồm 5 từ, không giải thích gì thêm.`;
+// ...existing code...
 
 // Hàm chọn ngẫu nhiên n từ không trùng nhau trong câu (chỉ chọn từ có độ dài > 2)
 function pickRandomWords(sentence, n) {
@@ -39,7 +37,7 @@ const PracticeTab = () => {
   const [isAnswered, setIsAnswered] = useState(false);
   const [selectedAnswers, setSelectedAnswers] = useState([]);
   const [error, setError] = useState(null);
-  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  // ...existing code...
 
   useEffect(() => {
     if (sentenceData.length > 0) {
