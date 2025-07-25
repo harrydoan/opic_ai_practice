@@ -59,14 +59,15 @@ const PracticeTab = () => {
   // Sử dụng useCallback để tránh lỗi missing dependency
 
   // Generate distractors locally: pick words of same type from paragraph
+  const distractorTypes = {
+    article: ['a', 'an', 'the'],
+    preposition: ['in', 'on', 'at', 'with', 'from', 'for', 'about', 'over', 'under', 'by'],
+    verb: ['is', 'are', 'was', 'were', 'be', 'being', 'been'],
+  };
   const getWordType = (word) => {
-    // Simple type detection: articles, prepositions, verbs, etc.
-    const articles = ['a', 'an', 'the'];
-    const prepositions = ['in', 'on', 'at', 'with', 'from', 'for', 'about', 'over', 'under', 'by'];
-    const verbs = ['is', 'are', 'was', 'were', 'be', 'being', 'been'];
-    if (articles.includes(word.toLowerCase())) return 'article';
-    if (prepositions.includes(word.toLowerCase())) return 'preposition';
-    if (verbs.includes(word.toLowerCase())) return 'verb';
+    for (const type in distractorTypes) {
+      if (distractorTypes[type].includes(word.toLowerCase())) return type;
+    }
     return null;
   };
   const fetchDistractors = useCallback((words, sentence) => {
@@ -77,7 +78,16 @@ const PracticeTab = () => {
       const candidates = allWords.filter(w => w.length > 2 && w !== words[i] && getWordType(w) === type);
       distractors = distractors.concat(candidates);
     }
-    // Loại trùng và cắt còn đủ số lượng
+    // Nếu không đủ distractors, thêm các từ phổ biến cùng loại
+    while (distractors.length < 6 - words.length) {
+      for (const type in distractorTypes) {
+        for (const w of distractorTypes[type]) {
+          if (!words.includes(w) && !distractors.includes(w)) distractors.push(w);
+          if (distractors.length >= 6 - words.length) break;
+        }
+        if (distractors.length >= 6 - words.length) break;
+      }
+    }
     return Array.from(new Set(distractors)).slice(0, 6 - words.length);
   }, []);
 
@@ -118,25 +128,15 @@ const PracticeTab = () => {
     const wordsArr = sentenceObject.originalText.split(/\s+/);
     let questionSentence = wordsArr.map((w, i) => blankIdxs.includes(i) ? '____' : w).join(' ');
 
-    // 3. Lấy đáp án sai từ AI
-    let distractors = await fetchDistractors(blankWords, sentenceObject.originalText);
-    // Nếu không đủ, thêm các từ tiếng Anh phổ biến
-    const fallbackDistractors = ['people', 'place', 'thing', 'time', 'day', 'life', 'man', 'woman', 'child', 'world', 'school', 'state', 'family', 'student', 'group', 'country', 'problem', 'hand', 'part', 'case', 'week', 'company', 'system', 'program', 'question', 'work', 'government', 'number', 'night', 'point', 'home', 'water', 'room', 'mother', 'area', 'money', 'story', 'fact', 'month', 'lot', 'right', 'study', 'book', 'eye', 'job', 'word', 'business', 'issue', 'side', 'kind', 'head', 'house', 'service', 'friend', 'father', 'power', 'hour', 'game', 'line', 'end', 'member', 'law', 'car', 'city', 'community', 'name', 'president', 'team', 'minute', 'idea', 'kid', 'body', 'information', 'back', 'parent', 'face', 'others', 'level', 'office', 'door', 'health', 'person', 'art', 'war', 'history', 'party', 'result', 'change', 'morning', 'reason', 'research', 'girl', 'guy', 'moment', 'air', 'teacher', 'force', 'education'];
-    while (distractors.length < 6 - blankWords.length) {
-      const next = fallbackDistractors.find(w => !blankWords.includes(w) && !distractors.includes(w));
-      if (!next) break;
-      distractors.push(next);
-    }
-
+    // 3. Lấy đáp án sai từ dữ liệu đầu vào, không gọi AI
+    let distractors = fetchDistractors(blankWords, sentenceObject.originalText);
     // 4. Trộn đáp án đúng và sai
     const options = shuffleArray([...blankWords, ...distractors]).slice(0, 6);
-
     // 5. Lấy bản dịch tiếng Việt từ sentenceTranslations
     let translation = '';
     if (sentenceTranslations && sentenceTranslations.length > sentenceIdx) {
       translation = sentenceTranslations[sentenceIdx]?.translation || '';
     }
-
     setCurrentQuestion({
       question_sentence: questionSentence,
       options,
@@ -159,29 +159,10 @@ const PracticeTab = () => {
       ? selectedAnswers.filter(a => a !== answer)
       : [...selectedAnswers, answer];
     setSelectedAnswers(newSelected);
-    // Nếu đã chọn đủ số đáp án, tự động kiểm tra và lấy bản dịch nếu chưa có
+    // Nếu đã chọn đủ số đáp án, tự động kiểm tra và lấy bản dịch từ dữ liệu đầu vào
     if (newSelected.length === numBlanks) {
       setFeedbackLoading(true);
       let translation = currentQuestion.translation;
-      if (!translation) {
-        try {
-          const explainPrompt = `Hãy dịch câu sau sang tiếng Việt: "${currentQuestion.question_sentence.replace(/____/g, currentQuestion.correct_answers[0])}". Trả về một object JSON với trường: translation.`;
-          const res = await callOpenRouterAPI(explainPrompt, selectedModel, { max_tokens: 200 });
-          let obj = {};
-          try {
-            const match = res && typeof res === 'string' ? res.match(/{[\s\S]*}/) : null;
-            if (match && match[0]) {
-              obj = JSON.parse(match[0]);
-            }
-          } catch (err) {
-            obj = {};
-          }
-          translation = typeof obj.translation === 'string' ? obj.translation : '';
-        } catch (e) {
-          translation = '';
-        }
-      }
-      translation = typeof translation === 'string' ? translation : '';
       setCurrentQuestion(q => ({ ...q, grammar_explanation: '', translation }));
       setTimeout(() => {
         setIsAnswered(true);
