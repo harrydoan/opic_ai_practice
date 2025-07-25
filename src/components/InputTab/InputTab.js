@@ -12,7 +12,17 @@ const cleanOpicResponse = (rawText) => {
     'Câu hỏi:', 'Câu trả lời mẫu:', 'Câu trả lời:'
   ];
   const cleanedLines = rawText.split('\n').map(line => {
-// ...existing code...
+    let cleanedLine = line.trim();
+    for (const prefix of prefixesToRemove) {
+      if (cleanedLine.toLowerCase().startsWith(prefix.toLowerCase())) {
+        cleanedLine = cleanedLine.substring(prefix.length).trim();
+        break;
+      }
+    }
+    return cleanedLine;
+  });
+  return cleanedLines.join('\n').trim();
+};
 
   // Lưu dữ liệu với tên, bao gồm cả tiếng Anh và bản dịch
   const savePracticeData = () => {
@@ -299,5 +309,4 @@ const cleanOpicResponse = (rawText) => {
       )}
     </div>
   );
-};
 export default InputTab;
