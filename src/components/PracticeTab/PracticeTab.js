@@ -179,7 +179,7 @@ const PracticeTab = () => {
       <div className="processing-container">
         <p>An error occurred:</p>
         <p><i>{error}</i></p>
-        <Button onClick={fetchQuestion}>Thử lại</Button>
+        <Button onClick={() => generateQuestion(currentIndex, numBlanks, deck)}>Thử lại</Button>
       </div>
     );
   }
