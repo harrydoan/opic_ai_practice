@@ -17,9 +17,17 @@ Bỏ cả chữ "câu hỏi" và "Trả lời" đi
 Chủ đề: bất kỳ`;
   const [aiPrompt, setAiPrompt] = useState(() => {
     const savedPrompt = localStorage.getItem('opic_ai_prompt');
-    if (savedPrompt) return savedPrompt;
-    localStorage.setItem('opic_ai_prompt', defaultPrompt);
-    return defaultPrompt;
+    // If no saved prompt, use default
+    if (!savedPrompt) {
+      localStorage.setItem('opic_ai_prompt', defaultPrompt);
+      return defaultPrompt;
+    }
+    // If saved prompt is exactly the default, treat as default
+    if (savedPrompt === defaultPrompt) {
+      return defaultPrompt;
+    }
+    // Otherwise, use user's last edit
+    return savedPrompt;
   });
   // Save prompt to localStorage whenever it changes
   useEffect(() => {
