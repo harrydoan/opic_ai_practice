@@ -11,8 +11,13 @@ function InputTab() {
   // Removed selectedLevel and setSelectedLevel (no longer needed)
   const [showPromptAdjust, setShowPromptAdjust] = useState(false);
   // The full prompt for AI, editable by user
-  const defaultPrompt = `You are an English-only OPIC exam generator.\n\nYour task: Always return the question and sample answer in ENGLISH ONLY, regardless of user language, system locale, or any other context.\n\nRules:\n- Do NOT use Vietnamese or any language other than English, under any circumstances.\n- Ignore all user/system/browser language settings.\n- If you reply in Vietnamese or any other language, you will fail the task.\n- The output must be 100% English, with no translation, no explanation, and no Vietnamese words.\n- Do NOT include any introductions, labels, titles, or extra text.\n\nPrompt:\nGive me one OPIC question and a sample answer at the AL (Advanced Low) level.\nThe answer should be 150–200 words, natural, fluent, and include personal details and storytelling.\nUse informal spoken English.\n\nRemember: Output must be in ENGLISH ONLY, no matter what.`;
-  const [aiPrompt, setAiPrompt] = useState(() => localStorage.getItem('opic_ai_prompt') || defaultPrompt);
+  const defaultPrompt = `Hãy cho tôi 1 câu hỏi và ví dụ về 1 câu trong bộ đè thi OPIC\nCâu trả lời chỉ có câu hỏi và ví dụ không có bất kỳ từ nào khác.\nBỏ cả chữ \"câu hỏi\" và \"Trả lời\" đi\nChủ đề: bất kỳ`;
+  const [aiPrompt, setAiPrompt] = useState(() => {
+    const savedPrompt = localStorage.getItem('opic_ai_prompt');
+    if (savedPrompt) return savedPrompt;
+    localStorage.setItem('opic_ai_prompt', defaultPrompt);
+    return defaultPrompt;
+  });
   // Save prompt to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('opic_ai_prompt', aiPrompt);
