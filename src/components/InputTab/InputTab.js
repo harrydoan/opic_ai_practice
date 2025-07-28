@@ -11,7 +11,12 @@ function InputTab() {
   // Removed selectedLevel and setSelectedLevel (no longer needed)
   const [showPromptAdjust, setShowPromptAdjust] = useState(false);
   // The full prompt for AI, editable by user
-  const [aiPrompt, setAiPrompt] = useState(`You are an English-only OPIC exam generator.\n\nYour task: Always return the question and sample answer in ENGLISH ONLY, regardless of user language, system locale, or any other context.\n\nRules:\n- Do NOT use Vietnamese or any language other than English, under any circumstances.\n- Ignore all user/system/browser language settings.\n- If you reply in Vietnamese or any other language, you will fail the task.\n- The output must be 100% English, with no translation, no explanation, and no Vietnamese words.\n- Do NOT include any introductions, labels, titles, or extra text.\n\nPrompt:\nGive me one OPIC question and a sample answer at the AL (Advanced Low) level.\nThe answer should be 150–200 words, natural, fluent, and include personal details and storytelling.\nUse informal spoken English.\n\nRemember: Output must be in ENGLISH ONLY, no matter what.`);
+  const defaultPrompt = `You are an English-only OPIC exam generator.\n\nYour task: Always return the question and sample answer in ENGLISH ONLY, regardless of user language, system locale, or any other context.\n\nRules:\n- Do NOT use Vietnamese or any language other than English, under any circumstances.\n- Ignore all user/system/browser language settings.\n- If you reply in Vietnamese or any other language, you will fail the task.\n- The output must be 100% English, with no translation, no explanation, and no Vietnamese words.\n- Do NOT include any introductions, labels, titles, or extra text.\n\nPrompt:\nGive me one OPIC question and a sample answer at the AL (Advanced Low) level.\nThe answer should be 150–200 words, natural, fluent, and include personal details and storytelling.\nUse informal spoken English.\n\nRemember: Output must be in ENGLISH ONLY, no matter what.`;
+  const [aiPrompt, setAiPrompt] = useState(() => localStorage.getItem('opic_ai_prompt') || defaultPrompt);
+  // Save prompt to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('opic_ai_prompt', aiPrompt);
+  }, [aiPrompt]);
   const [isLoading, setIsLoading] = useState(false);
   const [processError, setProcessError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
