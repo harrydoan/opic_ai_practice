@@ -132,16 +132,16 @@ const PracticeTab = () => {
       return;
     }
     const picked = pickRandomWords(sentenceObject.originalText, blanks);
-    if (picked.length < blanks) {
-      setError('Câu quá ngắn hoặc không đủ từ để che.');
+    // Ensure number of unique blank words matches blanks
+    const blankWords = picked.map(p => p.word);
+    const uniqueBlankWords = Array.from(new Set(blankWords));
+    if (uniqueBlankWords.length < blanks) {
+      setError('Câu này không đủ từ khác nhau để che. Vui lòng chọn số từ che nhỏ hơn hoặc đổi câu khác.');
       return;
     }
-    const blankWords = picked.map(p => p.word);
     const blankIdxs = picked.map(p => p.idx);
     const wordsArr = sentenceObject.originalText.split(/\s+/);
     let questionSentence = wordsArr.map((w, i) => blankIdxs.includes(i) ? '____' : w).join(' ');
-    // Ensure only the correct number of blanks are in correct_answers and no duplicates
-    const uniqueBlankWords = Array.from(new Set(blankWords)).slice(0, blanks);
     // Get distractors, ensure no overlap with correct answers
     let distractors = fetchDistractors(uniqueBlankWords, sentenceObject.originalText, sentenceData).filter(d => !uniqueBlankWords.includes(d));
     // Remove duplicates from distractors
