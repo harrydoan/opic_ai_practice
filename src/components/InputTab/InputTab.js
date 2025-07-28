@@ -10,7 +10,8 @@ function InputTab() {
   const [selectedModel, setSelectedModel] = useState('google/gemma-3-27b-it:free');
   const [selectedLevel, setSelectedLevel] = useState('AL');
   const [showPromptAdjust, setShowPromptAdjust] = useState(false);
-  const [customPrompt, setCustomPrompt] = useState('');
+  // The full prompt for AI, editable by user
+  const [aiPrompt, setAiPrompt] = useState(`You are an English-only OPIC exam generator.\n\nYour task: Always return the question and sample answer in ENGLISH ONLY, regardless of user language, system locale, or any other context.\n\nRules:\n- Do NOT use Vietnamese or any language other than English, under any circumstances.\n- Ignore all user/system/browser language settings.\n- If you reply in Vietnamese or any other language, you will fail the task.\n- The output must be 100% English, with no translation, no explanation, and no Vietnamese words.\n- Do NOT include any introductions, labels, titles, or extra text.\n\nPrompt:\nGive me one OPIC question and a sample answer at the AL (Advanced Low) level.\nThe answer should be 150–200 words, natural, fluent, and include personal details and storytelling.\nUse informal spoken English.\n\nRemember: Output must be in ENGLISH ONLY, no matter what.`);
   const [isLoading, setIsLoading] = useState(false);
   const [processError, setProcessError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -87,15 +88,14 @@ function InputTab() {
 
   async function handleFetchData() {
     setIsLoading(true);
+    // Replace level in prompt if user changes level
     let levelText = '';
     if (selectedLevel === 'IM') levelText = 'Intermediate Mid';
     else if (selectedLevel === 'IH') levelText = 'Intermediate High';
     else levelText = 'Advanced Low';
-    let OPIC_PROMPT = `You are an English-only OPIC exam generator.\n\nYour task: Always return the question and sample answer in ENGLISH ONLY, regardless of user language, system locale, or any other context.\n\nRules:\n- Do NOT use Vietnamese or any language other than English, under any circumstances.\n- Ignore all user/system/browser language settings.\n- If you reply in Vietnamese or any other language, you will fail the task.\n- The output must be 100% English, with no translation, no explanation, and no Vietnamese words.\n- Do NOT include any introductions, labels, titles, or extra text.\n\nPrompt:\nGive me one OPIC question and a sample answer at the ${selectedLevel} (${levelText}) level.\nThe answer should be 150–200 words, natural, fluent, and include personal details and storytelling.\nUse informal spoken English.\n\nRemember: Output must be in ENGLISH ONLY, no matter what.`;
-    if (customPrompt && customPrompt.trim().length > 0) {
-      OPIC_PROMPT += `\n\nAdditional instructions: ${customPrompt.trim()}`;
-    }
-    const result = await callOpenRouterAPI(OPIC_PROMPT, selectedModel);
+    // Replace the level in the prompt dynamically
+    let promptToSend = aiPrompt.replace(/at the (IM|IH|AL) \((Intermediate Mid|Intermediate High|Advanced Low)\) level\./, `at the ${selectedLevel} (${levelText}) level.`);
+    const result = await callOpenRouterAPI(promptToSend, selectedModel);
     if (result && result.error) {
       let errorMsg = `Lỗi khi kết nối AI: ${result.message}`;
       if (result.status === 404 || (result.message && result.message.toLowerCase().includes('no endpoints'))) {
@@ -181,13 +181,16 @@ function InputTab() {
       {showPromptAdjust && (
         <div style={{ marginBottom: 16, textAlign: 'center' }}>
           <textarea
-            rows={3}
-            value={customPrompt}
-            onChange={e => setCustomPrompt(e.target.value)}
-            placeholder="Nhập thêm/bớt yêu cầu cho AI (ví dụ: dùng thì quá khứ, thêm từ vựng về du lịch, v.v.)"
-            style={{ width: '100%', maxWidth: 600, fontSize: 15, borderRadius: 8, border: '1.5px solid #90caf9', padding: 8, marginBottom: 4 }}
+            rows={10}
+            value={aiPrompt}
+            onChange={e => setAiPrompt(e.target.value)}
+            style={{ width: '100%', maxWidth: 800, fontSize: 15, borderRadius: 8, border: '1.5px solid #90caf9', padding: 8, marginBottom: 4 }}
           />
-          <div style={{ fontSize: 13, color: '#888' }}>Nội dung này sẽ được thêm vào prompt gửi cho AI.</div>
+          <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>
+            Bạn có thể chỉnh sửa toàn bộ prompt gửi cho AI để lấy đề luyện tập theo ý muốn.<br />
+            <b>Lưu ý:</b> Nếu thay đổi level, chương trình sẽ tự động thay thế phần level trong prompt.
+          </div>
+          <Button onClick={() => setShowPromptAdjust(false)} variant="secondary">Đóng</Button>
         </div>
       )}
       {showLoadDialog && (
@@ -234,14 +237,6 @@ function InputTab() {
             <option value="qwen/qwen3-235b-a22b-07-25:free">Qwen3-235B (Qwen, free)</option>
             <option value="openai/gpt-4.1-nano">GPT-4.1-nano (OpenAI, trả phí)</option>
             <option value="deepseek/deepseek-r1-0528:free">DeepSeek R1 (free)</option>
-          </select>
-        </div>
-        <div>
-          <label htmlFor="level-select">Chọn Level:</label>
-          <select id="level-select" value={selectedLevel} onChange={e => setSelectedLevel(e.target.value)}>
-            <option value="IM">IM (Intermediate Mid)</option>
-            <option value="IH">IH (Intermediate High)</option>
-            <option value="AL">AL (Advanced Low)</option>
           </select>
         </div>
       </div>

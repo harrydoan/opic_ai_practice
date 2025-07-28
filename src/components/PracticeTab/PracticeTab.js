@@ -59,8 +59,8 @@ const PracticeTab = () => {
     return deckArr[randomIdx];
   };
 
-  // Generate distractors locally: pick words of same type from paragraph
-  const fetchDistractors = React.useCallback((words, sentence) => {
+  // Improved distractor logic: pick words of same type, at similar positions, from other sentences in the passage
+  const fetchDistractors = React.useCallback((blankWords, currentSentence, sentenceData) => {
     const distractorTypes = {
       article: ['a', 'an', 'the'],
       preposition: ['in', 'on', 'at', 'with', 'from', 'for', 'about', 'over', 'under', 'by'],
@@ -70,26 +70,38 @@ const PracticeTab = () => {
       for (const type in distractorTypes) {
         if (distractorTypes[type].includes(word.toLowerCase())) return type;
       }
+      // Simple POS guess: articles, prepositions, verbs
+      if (/^(to|of|and|but|or|if|because|as|than|so|though)$/i.test(word)) return 'preposition';
       return null;
     };
-    const allWords = sentence.split(/\s+/).map(w => w.replace(/[.,!?;:]/g, ''));
+    // Get all words from other sentences (not current)
+    const currentWordsSet = new Set(currentSentence.split(/\s+/).map(w => w.replace(/[.,!?;:]/g, '')));
+    let otherWords = [];
+    sentenceData.forEach(s => {
+      if (s.originalText !== currentSentence) {
+        otherWords = otherWords.concat(s.originalText.split(/\s+/).map(w => w.replace(/[.,!?;:]/g, '')));
+      }
+    });
+    // Remove words that are in current sentence
+    otherWords = otherWords.filter(w => w.length > 2 && !currentWordsSet.has(w));
+    // For each blank, pick words of same type from other sentences
     let distractors = [];
-    for (let i = 0; i < words.length; i++) {
-      const type = getWordType(words[i]);
-      const candidates = allWords.filter(w => w.length > 2 && w !== words[i] && getWordType(w) === type);
+    for (let i = 0; i < blankWords.length; i++) {
+      const type = getWordType(blankWords[i]);
+      const candidates = otherWords.filter(w => getWordType(w) === type && !blankWords.includes(w));
       distractors = distractors.concat(candidates);
     }
     // Nếu không đủ distractors, thêm các từ phổ biến cùng loại
-    while (distractors.length < 6 - words.length) {
+    while (distractors.length < 6 - blankWords.length) {
       for (const type in distractorTypes) {
         for (const w of distractorTypes[type]) {
-          if (!words.includes(w) && !distractors.includes(w)) distractors.push(w);
-          if (distractors.length >= 6 - words.length) break;
+          if (!blankWords.includes(w) && !distractors.includes(w) && !currentWordsSet.has(w)) distractors.push(w);
+          if (distractors.length >= 6 - blankWords.length) break;
         }
-        if (distractors.length >= 6 - words.length) break;
+        if (distractors.length >= 6 - blankWords.length) break;
       }
     }
-    return Array.from(new Set(distractors)).slice(0, 6 - words.length);
+    return Array.from(new Set(distractors)).slice(0, 6 - blankWords.length);
   }, []);
 
   // Hàm tạo câu hỏi luyện tập
@@ -118,7 +130,7 @@ const PracticeTab = () => {
     // Ensure only the correct number of blanks are in correct_answers and no duplicates
     const uniqueBlankWords = Array.from(new Set(blankWords)).slice(0, blanks);
     // Get distractors, ensure no overlap with correct answers
-    let distractors = fetchDistractors(uniqueBlankWords, sentenceObject.originalText).filter(d => !uniqueBlankWords.includes(d));
+    let distractors = fetchDistractors(uniqueBlankWords, sentenceObject.originalText, sentenceData).filter(d => !uniqueBlankWords.includes(d));
     // Remove duplicates from distractors
     distractors = Array.from(new Set(distractors));
     // Fill up to 6 options
