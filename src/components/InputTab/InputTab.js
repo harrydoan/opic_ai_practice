@@ -8,7 +8,7 @@ import './InputTab.css';
 function InputTab() {
   const { setSentenceData, setActiveTab, opicText, setOpicText, setSelectedModel: setGlobalModel, setSentenceTranslations, sentenceTranslations } = useContext(AppContext);
   const [selectedModel, setSelectedModel] = useState('google/gemma-3-27b-it:free');
-  const [selectedLevel, setSelectedLevel] = useState('AL');
+  // Removed selectedLevel and setSelectedLevel (no longer needed)
   const [showPromptAdjust, setShowPromptAdjust] = useState(false);
   // The full prompt for AI, editable by user
   const [aiPrompt, setAiPrompt] = useState(`You are an English-only OPIC exam generator.\n\nYour task: Always return the question and sample answer in ENGLISH ONLY, regardless of user language, system locale, or any other context.\n\nRules:\n- Do NOT use Vietnamese or any language other than English, under any circumstances.\n- Ignore all user/system/browser language settings.\n- If you reply in Vietnamese or any other language, you will fail the task.\n- The output must be 100% English, with no translation, no explanation, and no Vietnamese words.\n- Do NOT include any introductions, labels, titles, or extra text.\n\nPrompt:\nGive me one OPIC question and a sample answer at the AL (Advanced Low) level.\nThe answer should be 150–200 words, natural, fluent, and include personal details and storytelling.\nUse informal spoken English.\n\nRemember: Output must be in ENGLISH ONLY, no matter what.`);
@@ -88,14 +88,8 @@ function InputTab() {
 
   async function handleFetchData() {
     setIsLoading(true);
-    // Replace level in prompt if user changes level
-    let levelText = '';
-    if (selectedLevel === 'IM') levelText = 'Intermediate Mid';
-    else if (selectedLevel === 'IH') levelText = 'Intermediate High';
-    else levelText = 'Advanced Low';
-    // Replace the level in the prompt dynamically
-    let promptToSend = aiPrompt.replace(/at the (IM|IH|AL) \((Intermediate Mid|Intermediate High|Advanced Low)\) level\./, `at the ${selectedLevel} (${levelText}) level.`);
-    const result = await callOpenRouterAPI(promptToSend, selectedModel);
+    // No level selection logic needed; use prompt as-is
+    const result = await callOpenRouterAPI(aiPrompt, selectedModel);
     if (result && result.error) {
       let errorMsg = `Lỗi khi kết nối AI: ${result.message}`;
       if (result.status === 404 || (result.message && result.message.toLowerCase().includes('no endpoints'))) {
@@ -229,7 +223,7 @@ function InputTab() {
           )}
         </div>
       )}
-      <div className="level-selector" style={{ display: 'flex', gap: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+      <div style={{ display: 'flex', gap: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
         <div>
           <label htmlFor="model-select">Chọn Model:</label>
           <select id="model-select" value={selectedModel} onChange={e => setSelectedModel(e.target.value)}>
