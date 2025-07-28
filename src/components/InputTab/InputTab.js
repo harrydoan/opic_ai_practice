@@ -11,7 +11,10 @@ function InputTab() {
   // Removed selectedLevel and setSelectedLevel (no longer needed)
   const [showPromptAdjust, setShowPromptAdjust] = useState(false);
   // The full prompt for AI, editable by user
-  const defaultPrompt = `Hãy cho tôi 1 câu hỏi và ví dụ về 1 câu trong bộ đè thi OPIC\nCâu trả lời chỉ có câu hỏi và ví dụ không có bất kỳ từ nào khác.\nBỏ cả chữ \"câu hỏi\" và \"Trả lời\" đi\nChủ đề: bất kỳ`;
+  const defaultPrompt = `Hãy cho tôi 1 câu hỏi và ví dụ về 1 câu trong bộ đè thi OPIC
+Câu trả lời chỉ có câu hỏi và ví dụ không có bất kỳ từ nào khác.
+Bỏ cả chữ "câu hỏi" và "Trả lời" đi
+Chủ đề: bất kỳ`;
   const [aiPrompt, setAiPrompt] = useState(() => {
     const savedPrompt = localStorage.getItem('opic_ai_prompt');
     if (savedPrompt) return savedPrompt;
