@@ -59,7 +59,7 @@ const PracticeTab = () => {
     return deckArr[randomIdx];
   };
 
-  // Improved distractor logic: pick words of same type, at similar positions, from other sentences in the passage
+  // Improved distractor logic: use words from all saved practice files for more challenging distractors
   const fetchDistractors = React.useCallback((blankWords, currentSentence, sentenceData) => {
     const distractorTypes = {
       article: ['a', 'an', 'the'],
@@ -70,7 +70,6 @@ const PracticeTab = () => {
       for (const type in distractorTypes) {
         if (distractorTypes[type].includes(word.toLowerCase())) return type;
       }
-      // Simple POS guess: articles, prepositions, verbs
       if (/^(to|of|and|but|or|if|because|as|than|so|though)$/i.test(word)) return 'preposition';
       return null;
     };
@@ -82,9 +81,22 @@ const PracticeTab = () => {
         otherWords = otherWords.concat(s.originalText.split(/\s+/).map(w => w.replace(/[.,!?;:]/g, '')));
       }
     });
+    // Add words from all saved practice files
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('opic_practice_') && !key.endsWith('_time')) {
+        try {
+          const saved = JSON.parse(localStorage.getItem(key));
+          if (saved && saved.opicText) {
+            saved.opicText.split(/[.!?]+/).forEach(s => {
+              otherWords = otherWords.concat(s.split(/\s+/).map(w => w.replace(/[.,!?;:]/g, '')));
+            });
+          }
+        } catch {}
+      }
+    });
     // Remove words that are in current sentence
     otherWords = otherWords.filter(w => w.length > 2 && !currentWordsSet.has(w));
-    // For each blank, pick words of same type from other sentences
+    // For each blank, pick words of same type from other sentences and saved files
     let distractors = [];
     for (let i = 0; i < blankWords.length; i++) {
       const type = getWordType(blankWords[i]);
@@ -101,7 +113,8 @@ const PracticeTab = () => {
         if (distractors.length >= 6 - blankWords.length) break;
       }
     }
-    return Array.from(new Set(distractors)).slice(0, 6 - blankWords.length);
+    // Loại bỏ trùng lặp, trộn thứ tự distractor để đa dạng hơn
+    return shuffleArray(Array.from(new Set(distractors))).slice(0, 6 - blankWords.length);
   }, []);
 
   // Hàm tạo câu hỏi luyện tập
