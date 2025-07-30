@@ -54,6 +54,13 @@ exports.handler = async function(event, context) {
       });
       jobData = await jobRes.json();
       console.log('[CloudConvert Job Creation]', JSON.stringify(jobData));
+      if (!jobRes.ok) {
+        console.error('[CloudConvert Job Creation HTTP Error]', jobRes.status, jobRes.statusText, JSON.stringify(jobData));
+        return {
+          statusCode: 500,
+          body: 'Failed to create CloudConvert job. HTTP Error: ' + jobRes.status + ' ' + jobRes.statusText + ' ' + JSON.stringify(jobData),
+        };
+      }
     } catch (jobErr) {
       console.error('[CloudConvert Job Creation Error]', jobErr);
       return {
@@ -82,11 +89,22 @@ exports.handler = async function(event, context) {
         lastPollData = pollData;
         // Log trạng thái từng lần poll
         console.log(`[CloudConvert Poll ${i+1}]`, JSON.stringify(pollData));
-        const exportTask = pollData.data.tasks.find(
+        if (!pollRes.ok) {
+          console.error(`[CloudConvert Poll HTTP Error ${i+1}]`, pollRes.status, pollRes.statusText, JSON.stringify(pollData));
+        }
+        if (!pollData.data || !pollData.data.tasks) {
+          console.error(`[CloudConvert Poll Data Error ${i+1}]`, JSON.stringify(pollData));
+        }
+        const exportTask = pollData.data && pollData.data.tasks ? pollData.data.tasks.find(
           t => t.name === 'export-my-file'
-        );
+        ) : null;
         if (exportTask) {
           console.log(`[CloudConvert Export Task ${i+1}]`, JSON.stringify(exportTask));
+          if (exportTask.status !== 'finished') {
+            console.warn(`[CloudConvert Export Task Not Finished ${i+1}] Status:`, exportTask.status);
+          }
+        } else {
+          console.warn(`[CloudConvert Export Task Missing ${i+1}]`, JSON.stringify(pollData.data ? pollData.data.tasks : pollData));
         }
         if (exportTask && exportTask.status === 'finished' && exportTask.result && exportTask.result.files && exportTask.result.files[0]) {
           mp3Url = exportTask.result.files[0].url;
