@@ -2,7 +2,7 @@ import React, { useState, useRef, useContext } from 'react';
 import { AppContext } from '../../context/AppContext';
 import Button from '../common/Button';
 import { speakText } from '../../utils/speech';
-import audioConverter from '../../utils/audioConverter';
+import simpleAudioConverter from '../../utils/simpleAudioConverter';
 import './MockTestTab.css';
 
 // import { callOpenRouterAPI } from '../../api/openRouterAPI';
