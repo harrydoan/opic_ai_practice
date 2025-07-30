@@ -42,6 +42,18 @@ class AudioConverter {
   }
 
   async convertWebmToMp3(webmBlob, onProgress = null) {
+    // Check if client-side conversion is possible
+    if (!this.isClientSideSupported()) {
+      console.log('Client-side conversion not supported, using server-side fallback');
+      try {
+        const result = await this.convertWithCloudConvert(webmBlob, onProgress);
+        return { success: true, mp3Url: result, method: 'server-side' };
+      } catch (serverError) {
+        console.error('Server-side conversion failed:', serverError);
+        throw new Error(`Conversion failed: ${serverError.message}`);
+      }
+    }
+
     try {
       // Try client-side conversion first
       const result = await this.convertWithFFmpeg(webmBlob, onProgress);
