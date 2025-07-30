@@ -115,11 +115,15 @@ exports.handler = async function(event, context) {
       }
     }
     if (!mp3Url) {
-      // Log chi tiết lỗi cuối cùng
-      console.error('Failed to get mp3 url from CloudConvert. Last poll data:', JSON.stringify(lastPollData));
+      // Tổng hợp log chi tiết để trả về cho client
+      let errorLog = '';
+      errorLog += '\n[CloudConvert Job Creation]\n' + JSON.stringify(jobData, null, 2);
+      errorLog += '\n[CloudConvert Last Poll Data]\n' + JSON.stringify(lastPollData, null, 2);
+      errorLog += '\n[CloudConvert API Key Present]: ' + (apiKey ? 'Yes' : 'No');
+      errorLog += '\n[webmBase64 Length]: ' + (webmBase64 ? webmBase64.length : 0);
       return {
         statusCode: 500,
-        body: 'Failed to get mp3 url from CloudConvert. Last poll data: ' + JSON.stringify(lastPollData),
+        body: 'Failed to get mp3 url from CloudConvert.\n' + errorLog,
       };
     }
     return {
