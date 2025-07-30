@@ -7,6 +7,7 @@ import OrderingTab from './components/OrderingTab/OrderingTab';
 import Card from './components/common/Card';
 import RewriteTab from './components/RewriteTab/RewriteTab';
 import MockTestTab from './components/MockTestTab/MockTestTab';
+import AudioTest from './components/common/AudioTest';
 
 
 function App() {
@@ -61,13 +62,14 @@ function App() {
       </header>
       <main>
         <Card>
-          <Tabs tabs={['Nhập liệu', 'Luyện tập', 'Sắp xếp câu', 'Viết lại câu', 'Thi thử']} />
+          <Tabs tabs={['Nhập liệu', 'Luyện tập', 'Sắp xếp câu', 'Viết lại câu', 'Thi thử', 'Audio Test']} />
           <div className="tab-content">
             {activeTab === 'Nhập liệu' && <InputTab />}
             {activeTab === 'Luyện tập' && <PracticeTab />}
             {activeTab === 'Sắp xếp câu' && <OrderingTab />}
             {activeTab === 'Viết lại câu' && <RewriteTab />}
             {activeTab === 'Thi thử' && <MockTestTab />}
+            {activeTab === 'Audio Test' && <AudioTest />}
           </div>
         </Card>
       </main>

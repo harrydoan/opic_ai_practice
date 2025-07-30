@@ -36,38 +36,40 @@ function MockTestTab() {
     setConversionMethod('');
 
     try {
-      // First, try to optimize the audio
-      const optimizedBlob = await audioConverter.optimizeAudio(webmBlob);
-      setConversionProgress(5);
-
-      // Convert using the new AudioConverter
-      const result = await audioConverter.convertWebmToMp3(
-        optimizedBlob,
-        (progress) => setConversionProgress(5 + (progress * 0.9)) // 5% for optimization, 90% for conversion
+      // Use simple audio converter
+      const result = await simpleAudioConverter.convertWebmToCompatible(
+        webmBlob,
+        (progress) => setConversionProgress(progress)
       );
 
       setConversionMethod(result.method);
       setConversionProgress(100);
 
-      if (result.method === 'client-side') {
-        // Client-side conversion returns blob
-        setMp3Blob(result.mp3Blob);
-        // Create URL for audio element
-        const url = URL.createObjectURL(result.mp3Blob);
-        setMp3Url(url);
-      } else {
-        // Server-side conversion returns URL
-        setMp3Url(result.mp3Url);
+      if (result.success) {
+        // Set the converted audio blob
+        setMp3Blob(result.audioBlob);
+        
+        // Create download info
+        const downloadInfo = simpleAudioConverter.createDownloadUrl(
+          result.audioBlob, 
+          result.format
+        );
+        
+        setMp3Url(downloadInfo.url);
+        
+        // Store cleanup function for later
+        window._audioCleanup = downloadInfo.cleanup;
+        window._audioFilename = downloadInfo.filename;
       }
 
     } catch (err) {
       console.error('Conversion error:', err);
       setCloudConvertError(
-        `Lỗi convert mp3: ${err.message}\n\n` +
-        `Có thể thử:\n` +
-        `- Ghi âm ngắn hơn (dưới 1 phút)\n` +
-        `- Kiểm tra kết nối internet\n` +
-        `- Refresh trang và thử lại`
+        `Lỗi chuyển đổi audio: ${err.message}\n\n` +
+        `Thông tin:\n` +
+        `- Đã fallback về định dạng gốc\n` +
+        `- File vẫn có thể phát và tải về\n` +
+        `- Có thể thử ghi âm lại`
       );
     } finally {
       setIsConverting(false);
@@ -117,14 +119,38 @@ function MockTestTab() {
     setTimer(selectedDuration);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new window.MediaRecorder(stream);
+      
+      // Get best recording options
+      const recordingOptions = simpleAudioConverter.getRecordingOptions();
+      console.log('Using recording options:', recordingOptions);
+      
+      // Try to create MediaRecorder with best format
+      let mediaRecorder;
+      try {
+        mediaRecorder = new MediaRecorder(stream, recordingOptions);
+      } catch (e) {
+        console.warn('Fallback to default MediaRecorder options:', e);
+        mediaRecorder = new MediaRecorder(stream);
+      }
+      
+      mediaRecorderRef.current = mediaRecorder;
       const chunks = [];
+      
       mediaRecorderRef.current.ondataavailable = e => chunks.push(e.data);
       mediaRecorderRef.current.onstop = () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const mimeType = mediaRecorder.mimeType || 'audio/webm';
+        const blob = new Blob(chunks, { type: mimeType });
         setAudioUrl(URL.createObjectURL(blob));
-        // Không tự động convert, chỉ lưu blob để user bấm convert
-        window._lastWebmBlob = blob; // Lưu tạm để convert khi bấm nút
+        
+        // Store blob info for conversion
+        window._lastWebmBlob = blob;
+        window._lastRecordingType = mimeType;
+        
+        console.log('Recording completed:', {
+          size: blob.size,
+          type: blob.type,
+          detectedType: mimeType
+        });
       };
       mediaRecorderRef.current.start();
       setIsRecording(true);
@@ -239,9 +265,13 @@ function MockTestTab() {
                 setConversionProgress(0);
                 setConversionMethod('');
                 setCloudConvertError('');
-                // Cleanup URL if it was created client-side
-                if (mp3Url && mp3Blob) {
+                // Cleanup URLs
+                if (mp3Url) {
                   URL.revokeObjectURL(mp3Url);
+                }
+                if (window._audioCleanup) {
+                  window._audioCleanup();
+                  window._audioCleanup = null;
                 }
               }} variant="secondary">Xóa ghi âm</Button>
               <Button
@@ -257,9 +287,13 @@ function MockTestTab() {
                   setQuestionPlayed(false);
                   setCanReplay(true);
                   setError('');
-                  // Cleanup URL if it was created client-side
-                  if (mp3Url && mp3Blob) {
+                  // Cleanup URLs
+                  if (mp3Url) {
                     URL.revokeObjectURL(mp3Url);
+                  }
+                  if (window._audioCleanup) {
+                    window._audioCleanup();
+                    window._audioCleanup = null;
                   }
                 }}
                 variant="secondary"
@@ -283,12 +317,12 @@ function MockTestTab() {
                   variant="primary"
                   style={{ fontSize: 18, padding: '10px 24px', borderRadius: 18, marginTop: 8, background: '#1976d2' }}
                   disabled={isConverting}
-                >{isConverting ? 'Đang chuyển đổi...' : 'Chuyển sang mp3'}</Button>
+                                  >{isConverting ? 'Đang xử lý...' : 'Chuyển đổi audio'}</Button>
               )}
               {mp3Url && (
                 <a 
                   href={mp3Url} 
-                  download="opic_recording.mp3" 
+                  download={window._audioFilename || "opic_recording.mp3"} 
                   style={{ textDecoration: 'none' }}
                   onClick={(e) => {
                     // For client-side conversion, create a temporary download URL
@@ -297,7 +331,7 @@ function MockTestTab() {
                       const url = URL.createObjectURL(mp3Blob);
                       const a = document.createElement('a');
                       a.href = url;
-                      a.download = 'opic_recording.mp3';
+                      a.download = window._audioFilename || 'opic_recording.mp3';
                       document.body.appendChild(a);
                       a.click();
                       document.body.removeChild(a);
@@ -306,7 +340,7 @@ function MockTestTab() {
                   }}
                 >
                   <Button variant="primary" style={{ fontSize: 18, padding: '10px 24px', borderRadius: 18, marginTop: 8, background: '#388e3c' }}>
-                    Tải file mp3
+                    Tải file audio
                   </Button>
                 </a>
               )}
@@ -346,12 +380,12 @@ function MockTestTab() {
                   }}
                   variant="primary"
                   style={{ fontSize: 18, padding: '10px 24px', borderRadius: 18, marginTop: 8, background: '#1976d2' }}
-                >Chia sẻ mp3</Button>
+                >Chia sẻ audio</Button>
               )}
             </div>
             {isConverting && (
               <div style={{ color: '#1976d2', marginTop: 8 }}>
-                <div>Đang chuyển đổi sang mp3... {conversionProgress > 0 && `${Math.round(conversionProgress)}%`}</div>
+                <div>Đang xử lý audio... {conversionProgress > 0 && `${Math.round(conversionProgress)}%`}</div>
                 {conversionProgress > 0 && (
                   <div style={{ 
                     width: '100%', 
@@ -379,7 +413,7 @@ function MockTestTab() {
             )}
             {cloudConvertError && (
               <div style={{ color: 'red', marginTop: 8, whiteSpace: 'pre-wrap', fontWeight: 600 }}>
-                <span>Lỗi chuyển đổi mp3:</span>
+                <span>Thông tin xử lý audio:</span>
                 <br />
                 {cloudConvertError}
               </div>
