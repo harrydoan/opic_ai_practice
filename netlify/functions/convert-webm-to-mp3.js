@@ -58,26 +58,36 @@ exports.handler = async function(event, context) {
       };
     }
     const jobId = jobData.data.id;
-    // 2. Poll for export url
+    // 2. Poll for export url (increase timeout and log details)
     let mp3Url = null;
-    for (let i = 0; i < 20; i++) {
+    let lastPollData = null;
+    for (let i = 0; i < 40; i++) { // tăng số lần chờ lên 40 lần (tối đa ~2 phút)
       await new Promise(r => setTimeout(r, 3000));
-      const pollRes = await fetch(`https://api.cloudconvert.com/v2/jobs/${jobId}`, {
-        headers: { 'Authorization': `Bearer ${apiKey}` },
-      });
-      const pollData = await pollRes.json();
-      const exportTask = pollData.data.tasks.find(
-        t => t.name === 'export-my-file' && t.status === 'finished'
-      );
-      if (exportTask && exportTask.result && exportTask.result.files && exportTask.result.files[0]) {
-        mp3Url = exportTask.result.files[0].url;
-        break;
+      try {
+        const pollRes = await fetch(`https://api.cloudconvert.com/v2/jobs/${jobId}`, {
+          headers: { 'Authorization': `Bearer ${apiKey}` },
+        });
+        const pollData = await pollRes.json();
+        lastPollData = pollData;
+        // Log trạng thái từng lần poll
+        console.log(`[CloudConvert Poll ${i+1}]`, JSON.stringify(pollData));
+        const exportTask = pollData.data.tasks.find(
+          t => t.name === 'export-my-file' && t.status === 'finished'
+        );
+        if (exportTask && exportTask.result && exportTask.result.files && exportTask.result.files[0]) {
+          mp3Url = exportTask.result.files[0].url;
+          break;
+        }
+      } catch (pollErr) {
+        console.error(`[CloudConvert Poll Error ${i+1}]`, pollErr);
       }
     }
     if (!mp3Url) {
+      // Log chi tiết lỗi cuối cùng
+      console.error('Failed to get mp3 url from CloudConvert. Last poll data:', JSON.stringify(lastPollData));
       return {
         statusCode: 500,
-        body: 'Failed to get mp3 url from CloudConvert',
+        body: 'Failed to get mp3 url from CloudConvert. Last poll data: ' + JSON.stringify(lastPollData),
       };
     }
     return {
