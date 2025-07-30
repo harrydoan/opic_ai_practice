@@ -22,6 +22,8 @@ function MockTestTab() {
   const [mp3Url, setMp3Url] = useState(null);
   const [isConverting, setIsConverting] = useState(false);
   const [cloudConvertError, setCloudConvertError] = useState('');
+  const [apiTestResult, setApiTestResult] = useState(null);
+  const [isTestingApi, setIsTestingApi] = useState(false);
 
   // Helper: convert blob to base64
   const blobToBase64 = (blob) => {
@@ -37,39 +39,98 @@ function MockTestTab() {
     setIsConverting(true);
     setCloudConvertError('');
     setMp3Url(null);
+    
     try {
+      // Validate blob
+      if (!webmBlob || webmBlob.size === 0) {
+        throw new Error('File ghi âm không hợp lệ hoặc rỗng');
+      }
+      
+      // Check file size (limit to 10MB)
+      if (webmBlob.size > 10 * 1024 * 1024) {
+        throw new Error('File ghi âm quá lớn (tối đa 10MB)');
+      }
+      
+      console.log('Converting webm to mp3...', { size: webmBlob.size, type: webmBlob.type });
+      
       // Convert blob to base64
       const base64 = await blobToBase64(webmBlob);
+      console.log('Base64 conversion completed', { length: base64.length });
+      
       // Call Netlify function
       const res = await fetch('/.netlify/functions/convert-webm-to-mp3', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ webmBase64: base64 })
       });
+      
       let errorDetails = '';
       let statusCode = res.status;
       let statusText = res.statusText;
       let data = null;
+      
       try {
         data = await res.json();
+        console.log('Response from convert function:', data);
       } catch (e) {
         errorDetails = 'Không thể parse JSON từ phản hồi backend.';
+        console.error('JSON parse error:', e);
       }
-      if (!res.ok || !data || !data.mp3Url) {
-        let backendMsg = (data && (data.body || data.error)) ? (data.body || data.error) : '';
+      
+      if (!res.ok) {
+        let backendMsg = '';
+        if (data) {
+          if (data.error) backendMsg = data.error;
+          else if (data.body) backendMsg = data.body;
+          else if (typeof data === 'string') backendMsg = data;
+        }
+        
         setCloudConvertError(
-          `Lỗi convert mp3: Không lấy được link mp3.\n` +
+          `Lỗi convert mp3:\n` +
           `Status: ${statusCode} ${statusText}\n` +
-          (backendMsg ? `Backend: ${backendMsg}\n` : '') +
-          (errorDetails ? `Parse error: ${errorDetails}\n` : '')
+          (backendMsg ? `Chi tiết: ${backendMsg}\n` : '') +
+          (errorDetails ? `Parse error: ${errorDetails}\n` : '') +
+          `\nVui lòng thử lại sau.`
         );
         return;
       }
+      
+      if (!data || !data.mp3Url) {
+        setCloudConvertError(
+          `Lỗi convert mp3: Không nhận được link mp3 từ server.\n` +
+          `Response: ${JSON.stringify(data)}\n` +
+          `Vui lòng thử lại sau.`
+        );
+        return;
+      }
+      
+      // Validate mp3Url
+      if (!data.mp3Url.startsWith('http')) {
+        setCloudConvertError(
+          `Lỗi convert mp3: Link mp3 không hợp lệ.\n` +
+          `URL: ${data.mp3Url}\n` +
+          `Vui lòng thử lại sau.`
+        );
+        return;
+      }
+      
+      console.log('MP3 conversion successful:', data.mp3Url);
       setMp3Url(data.mp3Url);
+      
+      // Show success message
+      if (data.conversionTime) {
+        console.log(`Conversion completed in ${data.conversionTime}ms`);
+      }
+      
     } catch (err) {
-      setCloudConvertError('Lỗi convert mp3: ' + err.message);
+      console.error('Convert mp3 error:', err);
+      setCloudConvertError(
+        `Lỗi convert mp3: ${err.message}\n` +
+        `Vui lòng kiểm tra kết nối mạng và thử lại.`
+      );
+    } finally {
+      setIsConverting(false);
     }
-    setIsConverting(false);
   };
 
   const [questionPlayed, setQuestionPlayed] = useState(false);
@@ -149,6 +210,27 @@ function MockTestTab() {
     clearInterval(timerRef.current);
   };
 
+  // Test CloudConvert API configuration
+  const testCloudConvertApi = async () => {
+    setIsTestingApi(true);
+    setApiTestResult(null);
+    
+    try {
+      const res = await fetch('/.netlify/functions/test-cloudconvert');
+      const data = await res.json();
+      
+      if (res.ok && data.status === 'SUCCESS') {
+        setApiTestResult({ success: true, message: data.message });
+      } else {
+        setApiTestResult({ success: false, message: data.error || 'Unknown error' });
+      }
+    } catch (err) {
+      setApiTestResult({ success: false, message: `Network error: ${err.message}` });
+    } finally {
+      setIsTestingApi(false);
+    }
+  };
+
 
   return (
     <div className="mocktest-tab-container">
@@ -187,6 +269,33 @@ function MockTestTab() {
           <Button onClick={replayQuestion} disabled={isRecording || questionWait} style={{ marginLeft: 8, fontSize: 16 }} variant="secondary">
             Nghe lại
           </Button>
+        )}
+      </div>
+      
+      {/* API Test Section */}
+      <div style={{ marginBottom: 16, padding: 12, background: '#f8f9fa', borderRadius: 8, border: '1px solid #e9ecef' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <strong style={{ fontSize: 16 }}>Kiểm tra cấu hình:</strong>
+          <Button 
+            onClick={testCloudConvertApi} 
+            disabled={isTestingApi}
+            variant="secondary"
+            style={{ fontSize: 14, padding: '4px 12px', borderRadius: 6 }}
+          >
+            {isTestingApi ? 'Đang kiểm tra...' : 'Test API'}
+          </Button>
+        </div>
+        {apiTestResult && (
+          <div style={{ 
+            padding: 8, 
+            borderRadius: 6, 
+            background: apiTestResult.success ? '#d4edda' : '#f8d7da',
+            color: apiTestResult.success ? '#155724' : '#721c24',
+            fontSize: 14
+          }}>
+            {apiTestResult.success ? '✅ ' : '❌ '}
+            {apiTestResult.message}
+          </div>
         )}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
@@ -264,6 +373,23 @@ function MockTestTab() {
                   disabled={isConverting}
                 >{isConverting ? 'Đang chuyển đổi...' : 'Chuyển sang mp3'}</Button>
               )}
+              {!mp3Url && window._lastWebmBlob && (
+                <Button
+                  onClick={() => {
+                    // Fallback: download webm file if mp3 conversion fails
+                    const url = URL.createObjectURL(window._lastWebmBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'opic_recording.webm';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                  }}
+                  variant="secondary"
+                  style={{ fontSize: 16, padding: '8px 16px', borderRadius: 16, marginTop: 8, background: '#f5f5f5', color: '#666' }}
+                >Tải file webm (dự phòng)</Button>
+              )}
               {mp3Url && (
                 <a href={mp3Url} download="opic_recording.mp3" style={{ textDecoration: 'none' }}>
                   <Button variant="primary" style={{ fontSize: 18, padding: '10px 24px', borderRadius: 18, marginTop: 8, background: '#388e3c' }}>
@@ -304,10 +430,18 @@ function MockTestTab() {
             </div>
             {isConverting && <div style={{ color: '#1976d2', marginTop: 8 }}>Đang chuyển đổi sang mp3...</div>}
             {cloudConvertError && (
-              <div style={{ color: 'red', marginTop: 8, whiteSpace: 'pre-wrap', fontWeight: 600 }}>
-                <span>Lỗi chuyển đổi mp3:</span>
-                <br />
+              <div style={{ color: 'red', marginTop: 8, whiteSpace: 'pre-wrap', fontWeight: 600, background: '#fff3f3', padding: 12, borderRadius: 8, border: '1px solid #ffcdd2' }}>
+                <span style={{ display: 'block', marginBottom: 8 }}>⚠️ Lỗi chuyển đổi mp3:</span>
                 {cloudConvertError}
+                <div style={{ marginTop: 8, fontSize: 14, color: '#666' }}>
+                  <strong>Hướng dẫn khắc phục:</strong>
+                  <ul style={{ margin: '4px 0', paddingLeft: 20 }}>
+                    <li>Kiểm tra kết nối mạng</li>
+                    <li>Thử lại sau vài phút</li>
+                    <li>Nếu vẫn lỗi, hãy tải file webm (dự phòng) ở trên</li>
+                    <li>Liên hệ admin nếu lỗi kéo dài</li>
+                  </ul>
+                </div>
               </div>
             )}
           </div>
