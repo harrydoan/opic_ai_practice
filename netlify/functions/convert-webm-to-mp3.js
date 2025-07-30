@@ -23,38 +23,49 @@ exports.handler = async function(event, context) {
       };
     }
     // 1. Create job
-    const jobRes = await fetch('https://api.cloudconvert.com/v2/jobs', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        tasks: {
-          'import-my-file': {
-            operation: 'import/base64',
-            file: webmBase64,
-            filename: 'recording.webm',
-          },
-          'convert-my-file': {
-            operation: 'convert',
-            input: 'import-my-file',
-            input_format: 'webm',
-            output_format: 'mp3',
-            audio_codec: 'mp3',
-          },
-          'export-my-file': {
-            operation: 'export/url',
-            input: 'convert-my-file',
-          },
+    let jobData = null;
+    try {
+      const jobRes = await fetch('https://api.cloudconvert.com/v2/jobs', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
         },
-      }),
-    });
-    const jobData = await jobRes.json();
-    if (!jobData.data || !jobData.data.id) {
+        body: JSON.stringify({
+          tasks: {
+            'import-my-file': {
+              operation: 'import/base64',
+              file: webmBase64,
+              filename: 'recording.webm',
+            },
+            'convert-my-file': {
+              operation: 'convert',
+              input: 'import-my-file',
+              input_format: 'webm',
+              output_format: 'mp3',
+              audio_codec: 'mp3',
+            },
+            'export-my-file': {
+              operation: 'export/url',
+              input: 'convert-my-file',
+            },
+          },
+        }),
+      });
+      jobData = await jobRes.json();
+      console.log('[CloudConvert Job Creation]', JSON.stringify(jobData));
+    } catch (jobErr) {
+      console.error('[CloudConvert Job Creation Error]', jobErr);
       return {
         statusCode: 500,
-        body: 'Failed to create CloudConvert job',
+        body: 'Failed to create CloudConvert job. Error: ' + jobErr.message,
+      };
+    }
+    if (!jobData.data || !jobData.data.id) {
+      console.error('[CloudConvert Job Creation Response Error]', JSON.stringify(jobData));
+      return {
+        statusCode: 500,
+        body: 'Failed to create CloudConvert job. Response: ' + JSON.stringify(jobData),
       };
     }
     const jobId = jobData.data.id;
@@ -72,9 +83,12 @@ exports.handler = async function(event, context) {
         // Log trạng thái từng lần poll
         console.log(`[CloudConvert Poll ${i+1}]`, JSON.stringify(pollData));
         const exportTask = pollData.data.tasks.find(
-          t => t.name === 'export-my-file' && t.status === 'finished'
+          t => t.name === 'export-my-file'
         );
-        if (exportTask && exportTask.result && exportTask.result.files && exportTask.result.files[0]) {
+        if (exportTask) {
+          console.log(`[CloudConvert Export Task ${i+1}]`, JSON.stringify(exportTask));
+        }
+        if (exportTask && exportTask.status === 'finished' && exportTask.result && exportTask.result.files && exportTask.result.files[0]) {
           mp3Url = exportTask.result.files[0].url;
           break;
         }
