@@ -8,8 +8,9 @@ import Card from './components/common/Card';
 import RewriteTab from './components/RewriteTab/RewriteTab';
 import MockTestTab from './components/MockTestTab/MockTestTab';
 
-
 function App() {
+  console.log('App component rendering...'); // Debug log
+  
   const { activeTab } = useContext(AppContext);
   const [visitorCount, setVisitorCount] = useState(null);
   const [totalVisitorCount, setTotalVisitorCount] = useState(null);
@@ -36,11 +37,14 @@ function App() {
   };
 
   useEffect(() => {
+    console.log('App useEffect running...'); // Debug log
     fetchVisitorCount();
     // Nếu muốn cập nhật realtime, có thể dùng interval:
     // const interval = setInterval(fetchVisitorCount, 10000);
     // return () => clearInterval(interval);
   }, []);
+
+  console.log('App render state:', { activeTab, visitorCount, loadingVisitor }); // Debug log
 
   return (
     <div className="app-container" style={{ position: 'relative' }}>
