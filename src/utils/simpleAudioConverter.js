@@ -13,6 +13,11 @@ class SimpleAudioConverter {
       wav: false
     };
 
+    // Check if we're in browser environment
+    if (typeof window === 'undefined' || typeof MediaRecorder === 'undefined') {
+      return formats;
+    }
+
     try {
       // Test MP3 support
       if (MediaRecorder.isTypeSupported('audio/mp3')) {
@@ -111,6 +116,12 @@ class SimpleAudioConverter {
   async reencodeToMp3(webmBlob) {
     return new Promise(async (resolve, reject) => {
       try {
+        // Check browser environment
+        if (typeof window === 'undefined' || (!window.AudioContext && !window.webkitAudioContext)) {
+          reject(new Error('Web Audio API not available'));
+          return;
+        }
+
         // Create audio context
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         

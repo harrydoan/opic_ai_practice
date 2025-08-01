@@ -6,9 +6,7 @@ import PracticeTab from './components/PracticeTab/PracticeTab';
 import OrderingTab from './components/OrderingTab/OrderingTab';
 import Card from './components/common/Card';
 import RewriteTab from './components/RewriteTab/RewriteTab';
-import MockTestTab from './components/MockTestTab/MockTestTab';
-import AudioTest from './components/common/AudioTest';
-
+import MockTestTabSimple from './components/MockTestTab/MockTestTabSimple';
 
 function App() {
   const { activeTab } = useContext(AppContext);
@@ -38,9 +36,6 @@ function App() {
 
   useEffect(() => {
     fetchVisitorCount();
-    // Nếu muốn cập nhật realtime, có thể dùng interval:
-    // const interval = setInterval(fetchVisitorCount, 10000);
-    // return () => clearInterval(interval);
   }, []);
 
   return (
@@ -62,20 +57,18 @@ function App() {
       </header>
       <main>
         <Card>
-          <Tabs tabs={['Nhập liệu', 'Luyện tập', 'Sắp xếp câu', 'Viết lại câu', 'Thi thử', 'Audio Test']} />
+          <Tabs tabs={['Nhập liệu', 'Luyện tập', 'Sắp xếp câu', 'Viết lại câu', 'Thi thử']} />
           <div className="tab-content">
             {activeTab === 'Nhập liệu' && <InputTab />}
             {activeTab === 'Luyện tập' && <PracticeTab />}
             {activeTab === 'Sắp xếp câu' && <OrderingTab />}
             {activeTab === 'Viết lại câu' && <RewriteTab />}
-            {activeTab === 'Thi thử' && <MockTestTab />}
-            {activeTab === 'Audio Test' && <AudioTest />}
+            {activeTab === 'Thi thử' && <MockTestTabSimple />}
           </div>
         </Card>
       </main>
     </div>
   );
-// ...phần còn lại của App.js
 }
+
 export default App;
-//git add . && git commit -m "Cập nhật logic Tab Sắp xếp và Luyện tập" && git push
